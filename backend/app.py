@@ -32,7 +32,7 @@ def login():
 
 if  __name__ == "__main__":
     with app.app_context(): #moramo imati context da kreiramo tabele
-        db.drop_all()
+        
         db.create_all() #kreira sve tabele koje su u modelima
     app.run(debug=True)
 
