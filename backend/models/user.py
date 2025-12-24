@@ -15,7 +15,8 @@ class User(db.Model):
     street=db.Column(db.String(50),nullable=False)
     streetNumber=db.Column(db.Integer,nullable=False)
     accountBalance=db.Column(db.Numeric(10,2),default=0.00)
-    
+    failed_attempts=db.Column(db.Integer,default=0)
+    blocked_until=db.Column(db.DateTime,nullable=True)
     
     
     

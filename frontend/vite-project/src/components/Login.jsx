@@ -8,6 +8,7 @@ function Login(){
   const [password,setPassword]=useState("");
   const [errorMessage,setErrorMessage]=useState("");
   const [loading,setLoading]=useState(false);
+  const [blocked,setBlocked]=useState(false);
   function handleSubmit(e){
     e.preventDefault();
     if(username=="" || password==""){
@@ -27,9 +28,19 @@ function Login(){
     })
     .catch(err=>{
        if(err.response){
-        alert(err.response.data.message);
+        if(err.response){
+            if(err.response.status===403){
+                setErrorMessage("Nalog je privremeno blokiran.Porusajte kasnije");
+                setBlocked(true);
+            }else if(err.response.status===401){
+                setErrorMessage("Pogresan email ili lozinka");
+            }else{
+                setErrorMessage("Doslo je do greske.");
+            }
+        }
        }else{
             console.error(err);
+            setErrorMessage("Server nije dostupan");
        }
     })
     .finally(()=>{
@@ -57,7 +68,7 @@ function Login(){
                 onChange={(e)=>setPassword(e.target.value)}
                 ></input>
             </div>
-            <button type="submit">Sign in</button>
+            <button type="submit" disabled={blocked}>Sign in</button>
             {loading && <div className="spinner"></div>}
 
             <div className="register-link">

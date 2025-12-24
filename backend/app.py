@@ -4,7 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from models.user import db,User
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import JWTManager, create_access_token
-from datetime import datetime;
+from datetime import datetime,timedelta;
 app=Flask(__name__)
 CORS(app) #dozvoljaava reactu da pristupi backendu
 app.config["JWT_SECRET_KEY"]="super-secret-key"
@@ -25,15 +25,43 @@ def login():
         username=data.get("username")
         password=data.get("password")
         
-        user=User.query.filter_by(username=username).first()
-        
-        if user and check_password_hash(user.password,password):
-            token=create_access_token(identity=user.id)
-            return jsonify({"message":"Uspesna prijava",
-                            "access_token":token})
-        else:
-            return jsonify({"message":"Pogresno korisnicko ime ili lozinka"}),401
+        user = User.query.filter_by(username=username).first()
 
+      # ❌ Ako korisnik ne postoji
+        if not user:
+            return jsonify({"message": "Pogrešan email ili lozinka"}), 401
+
+    # ⛔ Ako je korisnik blokiran
+        if user.blocked_until and user.blocked_until > datetime.utcnow():
+            return jsonify({
+                "message": "Nalog je privremeno blokiran. Pokušajte kasnije."
+         }), 403
+
+    # ❌ Pogrešna lozinka
+        if not check_password_hash(user.password, password):
+           user.failed_attempts += 1
+
+            # Ako ima 3 neuspešna pokušaja
+           if user.failed_attempts >= 3:
+               user.blocked_until = datetime.utcnow() + timedelta(minutes=1)  # test: 1 minut
+               user.failed_attempts = 0
+
+           db.session.commit()
+
+           return jsonify({"message": "Pogrešan email ili lozinka"}), 401
+        
+      # ✅ Uspešan login
+        user.failed_attempts = 0
+        user.blocked_until = None
+        db.session.commit()
+
+        token = create_access_token(identity=user.id)
+
+        return jsonify({
+          "message": "Uspešna prijava",
+           "access_token": token
+        }), 200
+        
 @app.route("/register",methods=["POST"])
 def register():
     data=request.get_json()
@@ -85,7 +113,7 @@ def register():
     
 if  __name__ == "__main__":
     with app.app_context(): #moramo imati context da kreiramo tabele
-        db.drop_all()
+        
         db.create_all() #kreira sve tabele koje su u modelima
     app.run(debug=True)
 

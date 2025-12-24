@@ -1,6 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import "../CSS/Login.css";
+import { useNavigate } from "react-router-dom";
 
 function Register(){
     const [username,setUsername]=useState("");
@@ -15,7 +16,7 @@ function Register(){
     const [accountBalance,setAccountBalance]=useState("");
     const [loading,setLoading]=useState(false);
     const [errorMessage,setErrorMessage]=useState("");
-
+    const navigate=useNavigate();
     function handleSubmit(e){
         e.preventDefault();
 
@@ -42,7 +43,7 @@ function Register(){
         })
         .then(res=>{
            alert(res.data.message);
-           window.location.href="/login";
+           navigate("/");
         })
         .catch(err=>{
             if(err.response){
