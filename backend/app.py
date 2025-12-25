@@ -32,10 +32,16 @@ def login():
             return jsonify({"message": "Pogrešan email ili lozinka"}), 401
 
     # ⛔ Ako je korisnik blokiran
+        # ⛔ Ako je korisnik blokiran
         if user.blocked_until and user.blocked_until > datetime.utcnow():
+            remaining_seconds = int(
+              (user.blocked_until - datetime.utcnow()).total_seconds()
+            )
+
             return jsonify({
-                "message": "Nalog je privremeno blokiran. Pokušajte kasnije."
-         }), 403
+                  "message": "Nalog je privremeno blokiran.",
+                  "remaining_seconds": remaining_seconds
+            }), 403
 
     # ❌ Pogrešna lozinka
         if not check_password_hash(user.password, password):

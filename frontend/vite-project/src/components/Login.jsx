@@ -2,6 +2,7 @@ import { useState } from "react";
 import "../CSS/Login.css";
 import axios from "axios";
 import {Link} from "react-router-dom";
+import { useEffect } from "react";
 
 function Login(){
   const [username,setUsername]=useState("");
@@ -9,6 +10,24 @@ function Login(){
   const [errorMessage,setErrorMessage]=useState("");
   const [loading,setLoading]=useState(false);
   const [blocked,setBlocked]=useState(false);
+  const [remainingTime,setRemainingTime]=useState(0)
+
+  useEffect(()=>{
+    if(!blocked) return;
+
+    const timer=setInterval(()=>{
+        setRemainingTime(prev=>{
+            if(prev<=1){
+                clearInterval(timer);
+                setBlocked(false);
+                return 0;
+            }
+            return prev-1;
+        });
+    },1000);
+    return ()=>clearInterval(timer);
+  },[blocked]);
+
   function handleSubmit(e){
     e.preventDefault();
     if(username=="" || password==""){
@@ -32,6 +51,7 @@ function Login(){
             if(err.response.status===403){
                 setErrorMessage("Nalog je privremeno blokiran.Porusajte kasnije");
                 setBlocked(true);
+                setRemainingTime(err.response.data.remaining_seconds);
             }else if(err.response.status===401){
                 setErrorMessage("Pogresan email ili lozinka");
             }else{
@@ -76,6 +96,7 @@ function Login(){
                 <Link to="/register">Sign up</Link>
             </div>
             {errorMessage && <p className="error">{errorMessage}</p>}
+            {blocked && (<p className="error">Pokusajte ponovo za {remainingTime} sekundi</p>)}
         </div>
     </form>
 
