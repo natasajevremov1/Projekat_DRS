@@ -3,7 +3,7 @@ import "../CSS/Login.css";
 import axios from "axios";
 import {Link} from "react-router-dom";
 import { useEffect } from "react";
-
+import { useNavigate } from "react-router-dom";
 function Login(){
   const [username,setUsername]=useState("");
   const [password,setPassword]=useState("");
@@ -11,7 +11,7 @@ function Login(){
   const [loading,setLoading]=useState(false);
   const [blocked,setBlocked]=useState(false);
   const [remainingTime,setRemainingTime]=useState(0)
-
+  const navigate=useNavigate();
   useEffect(()=>{
     if(!blocked) return;
 
@@ -43,7 +43,14 @@ function Login(){
     })
     .then(res=>{
         localStorage.setItem("token",res.data.access_token);
+        localStorage.setItem("role",res.data.role);
         alert(res.data.message);
+        if(res.data.role==="ADMIN"){
+            navigate("/admin/users");
+        }else{
+            navigate("/");
+        }
+        
     })
     .catch(err=>{
        if(err.response){
