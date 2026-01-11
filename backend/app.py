@@ -5,10 +5,14 @@ from models.user import db,User
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import JWTManager, create_access_token,jwt_required,get_jwt
 from datetime import datetime,timedelta;
+import os
+from dotenv import load_dotenv
 
 app=Flask(__name__)
+load_dotenv()
 CORS(app) #dozvoljaava reactu da pristupi backendu
-app.config["JWT_SECRET_KEY"]="super-secret-key"
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+
 jwt=JWTManager(app)
 @jwt.invalid_token_loader
 def invalid_token_callback(reason):
@@ -19,7 +23,7 @@ def invalid_token_callback(reason):
 def missing_token_callback(reason):
     print("Missing token:", reason)
     return jsonify({"message": "Missing token", "reason": reason}), 401
-app.config['SQLALCHEMY_DATABASE_URI']='postgresql://postgres:123@localhost:5432/avio_app'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
 
 db.init_app(app) #povezujemo ovde sqlalchemy sa flaskom
