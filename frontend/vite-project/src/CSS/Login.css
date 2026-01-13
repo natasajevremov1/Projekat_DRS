@@ -246,6 +246,11 @@ button:hover {
     color: #222;
     font-weight: bold;
 }
+/* Akcije (Update + Delete dugmad) */
+.admin-container td button {
+    width: auto;            /* da dugme ne zauzima celu širinu */
+    margin-right: 10px;     /* razmak između dugmadi */
+}
 
 /* Tabela */
 .admin-container table {
@@ -259,9 +264,9 @@ button:hover {
     background: linear-gradient(135deg, #00c6ff, #0072ff);
     color: rgb(32, 30, 30);
     font-weight: bold;
-    padding: 12px;
+    padding: 15px;
     border-radius: 6px 6px 0 0;
-    text-align: left;
+    text-align: center;
 }
 
 /* Rows */
@@ -284,4 +289,50 @@ button:hover {
 .admin-container table {
     display: block;
     overflow-x: auto;
+}
+
+/* MainPage CSS */
+
+/* Body i glavni kontejner */
+ .main-page {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f4f4f4;
+    display: block;
+    height: 100%;
+}
+
+/* Meni fiksiran na vrh */
+.meni {
+    position: fixed;        /* fiksiran na vrh */
+    top: 0;
+    left: 0;
+    width: 100%;            /* puni ekran */
+    height: 60px;           /* visina menija */
+    background-color: white;
+    display: flex;
+    justify-content: space-between; /* linkovi levo, logout desno */
+    align-items: center;
+    padding: 0 20px;        /* unutrašnji razmak */
+    box-sizing: border-box;
+    z-index: 1000;          /* iznad svega */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* blaga senka */
+}/* Linkovi levo */
+.meni-left {
+    display: flex;
+    gap: 20px;            /* razmak između linkova */
+    align-items: center;
+}
+
+/* Logout dugme desno */
+.meni-right {
+    display: flex;
+    align-items: center;
+}
+
+
+/* Sadržaj ispod menija */
+.content {
+    padding-top: 0px; /* visina menija + malo margine */
 }

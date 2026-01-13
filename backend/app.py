@@ -173,6 +173,19 @@ def update_user_role(user_id):
 
     return jsonify({"message": f"User role updated to {new_role}"}), 200
     
+@app.route("/admin/users/<int:user_id>",methods=["DELETE"])
+@jwt_required()
+def delete_user(user_id):
+    #provera dal je admin
+    claims=get_jwt()
+    if claims.get("role")!="ADMIN":
+        return jsonify({"message":"You don't have permission"}),403 
+    user=User.query.get(user_id)
+    if not user:
+        return jsonify({"message":"User not found"}),404
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"message":f"User {user.username} succesfully deleted"}),200   
 if  __name__ == "__main__":
     with app.app_context(): #moramo imati context da kreiramo tabele
         

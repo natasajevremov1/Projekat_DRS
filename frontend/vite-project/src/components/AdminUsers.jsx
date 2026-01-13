@@ -1,6 +1,8 @@
 import { useState,useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import Header from "./Header";
+import EditProfile from "./EditProfile";
 
 function AdminUsers(){
     const [users, setUsers]=useState([]);
@@ -48,43 +50,85 @@ function AdminUsers(){
         .finally(()=>setLoading(false));
     };
 
-    return(
-        <div className="admin-container">
-            <h2>Users List</h2>
-            {error && <p className="error">{error}</p>}
+   const deleteUser = (id) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
 
-            <table border="1">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {users
-                    .filter(u=>u.role !="ADMIN")
-                    .map(u=>(
-                        <tr key={u.id}>
-                            <td>{u.id}</td>
-                            <td>{u.username}</td>
-                            <td>
-                                <select value={u.role}
-                                onChange={(e)=>handleRoleChange(u.id,e.target.value)}>
-                                    <option value="MANAGER">MANAGER</option>
-                                    <option value="USER">USER</option>
-                                </select>
-                            </td>
-                            <td>
-                                <button onClick={()=>updateRole(u.id,u.role)} disabled={loading}>
-                                    Update
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+    setLoading(true);
+
+    axios.delete(`http://127.0.0.1:5000/admin/users/${id}`, {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    })
+    .then(res => {
+        alert("User successfully deleted!");
+        // ukloni korisnika iz liste odmah, bez ponovnog fetch-a
+        setUsers(prev => prev.filter(u => u.id !== id));
+    })
+    .catch(err => {
+        console.error(err); // vidi šta tačno vraća server
+        alert("Error deleting user!");
+    })
+    .finally(() => setLoading(false));
+};
+
+return (
+    <div className="main-page">
+      {/* Header / meni ide ovde, izvan admin-container */}
+      <Header />
+
+      <div className="content">
+        <div className="admin-container">
+          <h2>Users List</h2>
+          {error && <p className="error">{error}</p>}
+
+          <table border="1">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users
+                .filter((u) => u.role !== "ADMIN")
+                .map((u) => (
+                  <tr key={u.id}>
+                    <td>{u.id}</td>
+                    <td>{u.username}</td>
+                    <td>
+                      <select
+                        value={u.role}
+                        onChange={(e) =>
+                          handleRoleChange(u.id, e.target.value)
+                        }
+                      >
+                        <option value="MANAGER">MANAGER</option>
+                        <option value="USER">USER</option>
+                      </select>
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => updateRole(u.id, u.role)}
+                        disabled={loading}
+                      >
+                        Update
+                      </button>
+                      <button
+                      onClick={()=>deleteUser(u.id)}
+                      disabled={loading}
+                      >Delete</button>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
         </div>
-    );
+      </div>
+    </div>
+  );
 }
+
 export default AdminUsers;

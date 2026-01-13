@@ -45,11 +45,7 @@ function Login(){
         localStorage.setItem("token",res.data.access_token);
         localStorage.setItem("role",res.data.role);
         alert(res.data.message);
-        if(res.data.role==="ADMIN"){
-            navigate("/admin/users");
-        }else{
-            navigate("/");
-        }
+        navigate("/header");
         
     })
     .catch(err=>{
