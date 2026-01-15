@@ -7,8 +7,16 @@ from flask_jwt_extended import JWTManager, create_access_token,jwt_required,get_
 from datetime import datetime,timedelta;
 import os
 from dotenv import load_dotenv
+from flask import request
+from werkzeug.utils import secure_filename
+from flask import send_from_directory
+
 
 app=Flask(__name__)
+
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 load_dotenv()
 CORS(app) #dozvoljaava reactu da pristupi backendu
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
@@ -185,7 +193,69 @@ def delete_user(user_id):
         return jsonify({"message":"User not found"}),404
     db.session.delete(user)
     db.session.commit()
-    return jsonify({"message":f"User {user.username} succesfully deleted"}),200   
+    return jsonify({"message":f"User {user.username} succesfully deleted"}),200  
+
+@app.route("/profile", methods=["PUT"])
+@jwt_required()
+def edit_profile():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    # 🔹 FORM DATA (ne JSON!)
+    username = request.form.get("username")
+    password = request.form.get("password")
+    name = request.form.get("name")
+    lastname = request.form.get("lastname")
+    dateOfBirth = request.form.get("dateOfBirth")
+    gender = request.form.get("gender")
+    country = request.form.get("country")
+    street = request.form.get("street")
+    streetNumber = request.form.get("streetNumber")
+    accountBalance = request.form.get("accountBalance")
+
+    # 🔹 osnovna validacija
+    if not all([username, name, lastname, dateOfBirth, gender, country, street, streetNumber]):
+        return jsonify({"message": "Sva obavezna polja moraju biti popunjena"}), 400
+
+    try:
+        user.dateOfBirth = datetime.strptime(dateOfBirth, "%Y-%m-%d").date()
+        user.streetNumber = int(streetNumber)
+        user.accountBalance = float(accountBalance or 0)
+    except ValueError:
+        return jsonify({"message": "Pogrešan format podataka"}), 400
+
+    # 🔹 obična polja
+    user.username = username
+    user.name = name
+    user.lastname = lastname
+    user.gender = gender
+    user.country = country
+    user.street = street
+
+    # 🔹 password OPTIONAL
+    if password:
+        user.password = generate_password_hash(password)
+
+    # 🔹 IMAGE upload OPTIONAL
+    file = request.files.get("profileImage")
+    if file:
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+        file.save(filepath)
+        user.profile_image = filepath
+
+    db.session.commit()
+
+    return jsonify({"message": "Profil uspešno ažuriran"}), 200
+ 
+@app.route("/uploads/<filename>")
+def get_image(filename):
+    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+
+ 
 if  __name__ == "__main__":
     with app.app_context(): #moramo imati context da kreiramo tabele
         

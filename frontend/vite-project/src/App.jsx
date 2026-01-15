@@ -17,7 +17,7 @@ return(
         <Route path="/register" element={<Register/>}></Route>
         <Route path="/admin/users" element={<AdminUsers></AdminUsers>}></Route>
         <Route path="/header" element={<Header></Header>}></Route>
-        <Route path="/profile" element={<EditProfile></EditProfile>}></Route>
+        <Route path="/header/profile" element={<EditProfile></EditProfile>}></Route>
     </Routes>
  </BrowserRouter>
 )

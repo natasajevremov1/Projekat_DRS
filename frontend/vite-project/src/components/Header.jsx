@@ -37,13 +37,13 @@ function Header(){
                 {role==="MANAGER" && (
                     <>
                     <Link to="/manager">Manager</Link>
-                    <Link to="profile">Edit Profile</Link>
+                    <Link to="/header/profile">Edit Profile</Link>
                     </>
                     )}
                 {role === "USER" && (
                     <>
                     <Link to="/users">User</Link>
-                    <Link to="/profile"> Edit Profile</Link>
+                    <Link to="/header/profile"> Edit Profile</Link>
                     </>
                 )}
                 </div>
