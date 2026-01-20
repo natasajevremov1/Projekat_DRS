@@ -3,7 +3,7 @@ from flask_cors import CORS #da react moze poslati zahtev
 from flask_sqlalchemy import SQLAlchemy
 from models.user import db,User
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_jwt_extended import JWTManager, create_access_token,jwt_required,get_jwt
+from flask_jwt_extended import JWTManager, create_access_token,jwt_required,get_jwt,get_jwt_identity
 from datetime import datetime,timedelta;
 import os
 from dotenv import load_dotenv
@@ -195,7 +195,7 @@ def delete_user(user_id):
     db.session.commit()
     return jsonify({"message":f"User {user.username} succesfully deleted"}),200  
 
-@app.route("/profile", methods=["PUT"])
+@app.route("/profile", methods=["PUT","GET"])
 @jwt_required()
 def edit_profile():
     user_id = get_jwt_identity()
@@ -204,52 +204,68 @@ def edit_profile():
     if not user:
         return jsonify({"message": "User not found"}), 404
 
-    # 🔹 FORM DATA (ne JSON!)
-    username = request.form.get("username")
-    password = request.form.get("password")
-    name = request.form.get("name")
-    lastname = request.form.get("lastname")
-    dateOfBirth = request.form.get("dateOfBirth")
-    gender = request.form.get("gender")
-    country = request.form.get("country")
-    street = request.form.get("street")
-    streetNumber = request.form.get("streetNumber")
-    accountBalance = request.form.get("accountBalance")
+    if request.method == "GET":##get logic
+        return jsonify({
+            "username": user.username,
+            "name": user.name,
+            "lastname": user.lastname,
+            "dateOfBirth": user.dateOfBirth.isoformat() if user.dateOfBirth else None,
+            "gender": user.gender,
+            "country": user.country,
+            "street": user.street,
+            "streetNumber": user.streetNumber,
+            "accountBalance": user.accountBalance,
+            #"profileImage": user.profile_image
+        }), 200
 
-    # 🔹 osnovna validacija
-    if not all([username, name, lastname, dateOfBirth, gender, country, street, streetNumber]):
-        return jsonify({"message": "Sva obavezna polja moraju biti popunjena"}), 400
+    if request.method == "PUT":
 
-    try:
-        user.dateOfBirth = datetime.strptime(dateOfBirth, "%Y-%m-%d").date()
-        user.streetNumber = int(streetNumber)
-        user.accountBalance = float(accountBalance or 0)
-    except ValueError:
-        return jsonify({"message": "Pogrešan format podataka"}), 400
+         # FORM DATA (ne JSON!)
+        username = request.form.get("username")
+        password = request.form.get("password")
+        name = request.form.get("name")
+        lastname = request.form.get("lastname")
+        dateOfBirth = request.form.get("dateOfBirth")
+        gender = request.form.get("gender")
+        country = request.form.get("country")
+        street = request.form.get("street")
+        streetNumber = request.form.get("streetNumber")
+        accountBalance = request.form.get("accountBalance")
 
-    # 🔹 obična polja
-    user.username = username
-    user.name = name
-    user.lastname = lastname
-    user.gender = gender
-    user.country = country
-    user.street = street
+        # osnovna validacija
+        if not all([username, name, lastname, dateOfBirth, gender, country, street, streetNumber]):
+            return jsonify({"message": "All fields must be filled out"}), 400
 
-    # 🔹 password OPTIONAL
-    if password:
-        user.password = generate_password_hash(password)
+        try:
+            user.dateOfBirth = datetime.strptime(dateOfBirth, "%Y-%m-%d").date()
+            user.streetNumber = int(streetNumber)
+            user.accountBalance = float(accountBalance or 0)
+        except ValueError:
+            return jsonify({"message": "Wrong data format"}), 400
 
-    # 🔹 IMAGE upload OPTIONAL
-    file = request.files.get("profileImage")
-    if file:
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        file.save(filepath)
-        user.profile_image = filepath
+        # obična polja
+        user.username = username
+        user.name = name
+        user.lastname = lastname
+        user.gender = gender
+        user.country = country
+        user.street = street
 
-    db.session.commit()
+        # password OPTIONAL
+        if password:
+            user.password = generate_password_hash(password)
 
-    return jsonify({"message": "Profil uspešno ažuriran"}), 200
+        # IMAGE upload OPTIONAL
+        file = request.files.get("profileImage")
+        if file:
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            file.save(filepath)
+            user.profile_image = filepath
+
+        db.session.commit()
+
+        return jsonify({"message": "Profile successfully edited"}), 200
  
 @app.route("/uploads/<filename>")
 def get_image(filename):
