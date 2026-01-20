@@ -2,7 +2,8 @@ import { useState,useEffect } from "react";
 import axios from "axios";
 import "../CSS/Login.css";
 import { useNavigate } from "react-router-dom";
-
+import { useEffect } from "react";
+import Header from "./Header";
 
 function EditProfile(){
     const [username,setUsername]=useState("");
@@ -29,18 +30,19 @@ function EditProfile(){
         }
     })
     .then(res => {
-      const u = res.data || {};  // fallback na prazan objekat
-        setUsername(u.username);
-        setName(u.name);
-        setLastname(u.lastname);
-        setDateOfBirth(u.dateOfBirth);
-        setGender(u.gender);
-        setCountry(u.country);
-        setStreet(u.street);
-        setStreetNumber(u.streetNumber);
-        setAccountBalance(u.accountBalance);
+        //const u = res.data || {};  // fallback na prazan objekat
+        const u = res.data;
+        setUsername(u.username || "");
+        setName(u.name || "");
+        setLastname(u.lastname || "");
+        setDateOfBirth(u.dateOfBirth || "");
+        setGender(u.gender || "");
+        setCountry(u.country || "");
+        setStreet(u.street || "");
+        setStreetNumber(u.streetNumber || "");
+        setAccountBalance(u.accountBalance || "");
 
-        setCurrentImage(u.profile_image); // 👈 OVO JE BITNO
+        setCurrentImage(u.profile_image || ""); // 👈 OVO JE BITNO
     })
     .catch(err => console.error(err));
 }, []);
@@ -51,34 +53,34 @@ function EditProfile(){
         e.preventDefault();
 
         if(!username || !name || !lastname || !dateOfBirth || !gender || !country || !street || !streetNumber){
-        setErrorMessage("Sva polja moraju biti popunjena");
-        return;
-       } else {
-        setErrorMessage("");
-        setLoading(true);
+            setErrorMessage("Sva polja moraju biti popunjena");
+            return;
+        } else {
+            setErrorMessage("");
+            setLoading(true);
         }
 
         
-       const formData = new FormData();
-formData.append("username", username);
-formData.append("name", name);
-formData.append("lastname", lastname);
-formData.append("dateOfBirth", dateOfBirth);
-formData.append("gender", gender);
-formData.append("country", country);
-formData.append("street", street);
-formData.append("streetNumber", streetNumber);
-formData.append("accountBalance", accountBalance || 0);
+        const formData = new FormData();
+        formData.append("username", username);
+        formData.append("name", name);
+        formData.append("lastname", lastname);
+        formData.append("dateOfBirth", dateOfBirth);
+        formData.append("gender", gender);
+        formData.append("country", country);
+        formData.append("street", street);
+        formData.append("streetNumber", streetNumber);
+        formData.append("accountBalance", accountBalance || 0);
 
-if (profileImage) {
-    formData.append("profileImage", profileImage);
-}
-  // ➕ password samo ako je unesen
-        if (password) {
-            formData.append("password", password);
-        }
+    if (profileImage) {
+        formData.append("profileImage", profileImage);
+    }
+     // ➕ password samo ako je unesen
+    if (password) {
+        formData.append("password", password);
+    }
 
- axios.put("http://127.0.0.1:5000/profile", formData, {
+    axios.put("http://127.0.0.1:5000/profile", formData, {
             headers: {
                 "Authorization": `Bearer ${localStorage.getItem("token")}`,
                 "Content-Type": "multipart/form-data"
@@ -101,114 +103,156 @@ if (profileImage) {
 
     }  
     return (
-    <form className="register-form" onSubmit={handleSubmit}>
-        <div>
-            <h1>Edit profile</h1>
-            <p className="subtitle">Update your personal data</p>
+        <div className="main-page">
+            <Header />
+            <div className="content">
+                <form className="register-form" onSubmit={handleSubmit}>
+                    <div>
+                        <h1>Edit profile</h1>
+                        <p className="subtitle">Update your personal data</p>
 
-            <div className="register-grid">
+                        <div className="register-grid">
 
-                <div className="register-group">
-                    <label>Email address:</label>
-                    <input
-                        value={username}
-                        onChange={e => setUsername(e.target.value)}
-                    />
-                </div>
+                            <div className="register-group">
+                                <label>Email address:</label>
+                                <input
+                                    value={username}
+                                    onChange={e => setUsername(e.target.value)}
+                                />
+                            </div>
 
-                <div className="register-group">
-                    <label>New password (optional):</label>
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                    />
-                </div>
+                            <div className="register-group">
+                                <label>New password (optional):</label>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                />
+                            </div>
 
-                <div className="register-group">
-                    <label>Name:</label>
-                    <input
-                        value={name}
-                        onChange={e => setName(e.target.value)}
-                    />
-                </div>
+                            <div className="register-group">
+                                <label>Name:</label>
+                                <input
+                                    value={name}
+                                    onChange={e => setName(e.target.value)}
+                                />
+                            </div>
 
-                <div className="register-group">
-                    <label>Lastname:</label>
-                    <input
-                        value={lastname}
-                        onChange={e => setLastname(e.target.value)}
-                    />
-                </div>
+                            <div className="register-group">
+                                <label>Lastname:</label>
+                                <input
+                                    value={lastname}
+                                    onChange={e => setLastname(e.target.value)}
+                                />
+                            </div>
 
-                <div className="register-group">
-                    <label>Date of birth:</label>
-                    <input
-                        type="date"
-                        value={dateOfBirth}
-                        onChange={e => setDateOfBirth(e.target.value)}
-                    />
-                </div>
+                            <div className="register-group">
+                                <label>Date of birth:</label>
+                                <input
+                                    type="date"
+                                    value={dateOfBirth}
+                                    onChange={e => setDateOfBirth(e.target.value)}
+                                />
+                            </div>
 
-                <div className="register-group">
-                    <label>Gender:</label>
-                    <div className="gender-group">
-                        <label>
-                            <input
-                                type="radio"
-                                value="Male"
-                                checked={gender === "Male"}
-                                onChange={e => setGender(e.target.value)}
-                            />
-                            Male
-                        </label>
+                            <div className="register-group">
+                                <label>Gender:</label>
+                                <div className="gender-group">
+                                    <label>
+                                        <input
+                                            type="radio"
+                                            value="Male"
+                                            checked={gender === "Male"}
+                                            onChange={e => setGender(e.target.value)}
+                                        />
+                                        Male
+                                    </label>
 
-                        <label>
-                            <input
-                                type="radio"
-                                value="Female"
-                                checked={gender === "Female"}
-                                onChange={e => setGender(e.target.value)}
-                            />
-                            Female
-                        </label>
+                                    <label>
+                                        <input
+                                            type="radio"
+                                            value="Female"
+                                            checked={gender === "Female"}
+                                            onChange={e => setGender(e.target.value)}
+                                        />
+                                        Female
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div className="register-group">
+                                <label>Country:</label>
+                                <input 
+                                    type="text"
+                                    value={country}
+                                    onChange={(e)=>setCountry(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="register-group">
+                            <label>Street:</label> 
+                                <input
+                                    type="text"
+                                    value={street}
+                                    onChange={(e)=>setStreet(e.target.value)}
+                                />   
+                            </div> 
+
+                            <div className="register-group">
+                                <label>Street number:</label>
+                                <input 
+                                    type="text"
+                                    value={streetNumber}
+                                    onChange={(e)=>setStreetNumber(e.target.value)}
+                                />   
+                            </div>
+
+                            <div className="register-group">
+                                <label>Account balance:</label>
+                                <input 
+                                    type="number"
+                                    value={accountBalance}
+                                    onChange={(e)=>setAccountBalance(e.target.value)}
+                                />
+                            </div>
+
+
+                            <div className="register-group">
+                                <label>Profile image (optional):</label>
+
+                                {currentImage && (
+                                    <img
+                                        src={`http://127.0.0.1:5000/uploads/${currentImage}`}
+                                        alt="Profile"
+                                        style={{
+                                            width: "120px",
+                                            height: "120px",
+                                            objectFit: "cover",
+                                            borderRadius: "50%",
+                                            display: "block",
+                                            marginBottom: "10px"
+                                        }}
+                                    />
+                                )}
+
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={e => setProfileImage(e.target.files[0])}
+                                />
+                            </div>
+
+                        </div> {/* 👈 ZATVARA register-grid */}
+
+                        <button type="submit" disabled={loading}>
+                            {loading ? "Saving..." : "Save changes"}
+                        </button>
+
+                        {errorMessage && <p className="error">{errorMessage}</p>}
                     </div>
-                </div>
-
-                <div className="register-group">
-                    <label>Profile image (optional):</label>
-
-                    {currentImage && (
-                        <img
-                            src={`http://127.0.0.1:5000/uploads/${currentImage}`}
-                            alt="Profile"
-                            style={{
-                                width: "120px",
-                                height: "120px",
-                                objectFit: "cover",
-                                borderRadius: "50%",
-                                display: "block",
-                                marginBottom: "10px"
-                            }}
-                        />
-                    )}
-
-                    <input
-                        type="file"
-                        accept="image/*"
-                        onChange={e => setProfileImage(e.target.files[0])}
-                    />
-                </div>
-
-            </div> {/* 👈 ZATVARA register-grid */}
-
-            <button type="submit" disabled={loading}>
-                {loading ? "Saving..." : "Save changes"}
-            </button>
-
-            {errorMessage && <p className="error">{errorMessage}</p>}
+                </form>
+            </div>
         </div>
-    </form>
 );
 }
 export default EditProfile;

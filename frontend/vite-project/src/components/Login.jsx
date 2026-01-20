@@ -20,6 +20,7 @@ function Login(){
             if(prev<=1){
                 clearInterval(timer);
                 setBlocked(false);
+                setErrorMessage("");
                 return 0;
             }
             return prev-1;

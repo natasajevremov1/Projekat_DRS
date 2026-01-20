@@ -5,14 +5,15 @@ body {
     margin: 0;
     padding: 0;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    height: 100vh;
+    
     display: flex;
     justify-content: center;
     align-items: center;
+
     background: url('../images/plane1.jpg') no-repeat center center fixed;
     background-size: cover;
     
-    position: center;
+   
 }
 
 /* Tamni overlay da tekst bude čitljiv */
@@ -178,6 +179,7 @@ button:hover {
     font-size: 14px; /* manji font labela */
     display: block;
     margin-bottom: 5px;
+    color: #333;
 }
 
 .register-group input {
@@ -298,9 +300,8 @@ button:hover {
     margin: 0;
     padding: 0;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f4f4f4;
-    display: block;
-    height: 100%;
+    
+   
 }
 
 /* Meni fiksiran na vrh */
@@ -335,4 +336,5 @@ button:hover {
 /* Sadržaj ispod menija */
 .content {
     padding-top: 0px; /* visina menija + malo margine */
+    min-height: calc(100vh - 60px);
 }
