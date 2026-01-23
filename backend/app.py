@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 from flask import request
 from werkzeug.utils import secure_filename
 from flask import send_from_directory
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 
 app=Flask(__name__)
@@ -18,6 +21,11 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 load_dotenv()
+EMAIL_ADDRESS=os.getenv("EMAIL_ADDRESS")
+EMAIL_PASSWORD=os.getenv("EMAIL_PASSWORD")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
+
 CORS(app) #dozvoljaava reactu da pristupi backendu
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 
@@ -36,9 +44,40 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
 
 db.init_app(app) #povezujemo ovde sqlalchemy sa flaskom
 
+
+def send_role_change_email(to_email, new_role):
+    """
+    Salje mejl korisniku kada mu se promeni uloga.
+    Parametri:
+        to_email: string, mejl primaoca
+        new_role: string, nova uloga ("MANAGER" ili "USER")
+    """
+    # 1️⃣ Tekst mejla
+    subject = "Promena uloge na AvioPlatformi"
+    body = f"Poštovani,\n\nVaša uloga na platformi je promenjena.\nNova uloga: {new_role}\n\nPozdrav,\nAvioPlatform Tim"
+
+    # 2️⃣ Kreiranje mejla
+    msg = MIMEMultipart()
+    msg['From'] = EMAIL_ADDRESS         # tvoj Gmail iz .env
+    msg['To'] = to_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        # 3️⃣ Povezivanje sa Gmail SMTP serverom
+        server = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
+        server.starttls()               # aktivira TLS enkripciju
+        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)  # prijava koristeći App Password
+        server.send_message(msg)        # šalje mejl
+        server.quit()
+        print(f"Email poslat na {to_email}")
+    except Exception as e:
+        print("Greška prilikom slanja emaila:", e)
+
 @app.route("/")
 def home():
     return "Backend radi"
+
 
 #login deo
 @app.route("/login",methods=["POST"])
@@ -178,6 +217,8 @@ def update_user_role(user_id):
 
     user.role = new_role
     db.session.commit()
+    
+    send_role_change_email(user.username,new_role)
 
     return jsonify({"message": f"User role updated to {new_role}"}), 200
     
