@@ -38,6 +38,7 @@ function Header(){
                     <>
                     <Link to="/manager">Manager</Link>
                     <Link to="/header/profile">Edit Profile</Link>
+                    <Link to= "/header/flights">Flights</Link>
                     </>
                     )}
                 {role === "USER" && (

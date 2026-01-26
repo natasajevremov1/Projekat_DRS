@@ -338,3 +338,20 @@ button:hover {
     padding-top: 0px; /* visina menija + malo margine */
     min-height: calc(100vh - 60px);
 }
+.header-form{
+      position: fixed;        /* fiksiran na vrh */
+    top: 0;
+    left: 0;
+    width: 100%;            /* puni ekran */
+    height: 60px;           /* visina menija */
+    background-color: white;
+    display: flex;
+    justify-content: space-between; /* linkovi levo, logout desno */
+    align-items: center;
+    padding: 0 20px;        /* unutrašnji razmak */
+    box-sizing: border-box;
+    z-index: 1000;          /* iznad svega */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* blaga senka */
+
+
+}

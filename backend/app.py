@@ -145,17 +145,17 @@ def register():
     accountBalance = data.get("accountBalance", 0)
 
     if not (username and password and name and lastname and dateOfBirth and gender and country and street and streetNumber):
-        return jsonify({"message": "Sva polja moraju biti popunjena"}), 400
+        return jsonify({"message": "All fields must be filled."}), 400
     
     if User.query.filter_by(username=username).first():
-        return jsonify({"message":"User vec postoji"}),400
+        return jsonify({"message":"User already exist."}),400
     #konverzija tipova:
     try:
         dateOfBirth=datetime.strptime(dateOfBirth,"%Y-%m-%d").date()
         streetNumber=int(streetNumber)
         accountBalance=float(accountBalance)
     except ValueError:
-        return jsonify({"message": "Pogresan fromat podataka"}),400 
+        return jsonify({"message": "Wrong data format."}),400 
     
     #hesiranje lozinke
     hashed_password=generate_password_hash(password)
@@ -176,7 +176,7 @@ def register():
     db.session.add(new_user)
     db.session.commit()
     
-    return jsonify({"message":"Uspesna registracija"}),201  
+    return jsonify({"message":"Your registration is susccefully!"}),201  
     
 @app.route("/admin/users")
 #posalji token u headeru
@@ -187,7 +187,7 @@ def get_all_users():
     print("Claims",claims)
     print("Headers:",request.headers)
     if claims["role"] != "ADMIN":
-        return jsonify({"message":"Nemate dozvolu"}),403 
+        return jsonify({"message":"You don't have permission."}),403 
     
     #dohvati sve korisnike
     users=User.query.all()
@@ -204,7 +204,7 @@ def get_all_users():
 def update_user_role(user_id):
     claims = get_jwt()
     if claims.get("role") != "ADMIN":
-        return jsonify({"message": "Nemate dozvolu"}), 403
+        return jsonify({"message": "You don't have permission."}), 403
 
     data = request.get_json()
     new_role = data.get("role")
@@ -213,7 +213,7 @@ def update_user_role(user_id):
 
     user = User.query.get(user_id)
     if not user:
-        return jsonify({"message": "User not found"}), 404
+        return jsonify({"message": "User not found."}), 404
 
     user.role = new_role
     db.session.commit()

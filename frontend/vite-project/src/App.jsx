@@ -6,7 +6,7 @@ import { BrowserRouter,Route,Routes } from "react-router-dom";
 import AdminUsers from "./components/AdminUsers";
 import Header from "./components/Header";
 import EditProfile from "./components/EditProfile";
-
+import Flights from "./components/Flights";
 
 function App(){
 
@@ -18,6 +18,7 @@ return(
         <Route path="/admin/users" element={<AdminUsers></AdminUsers>}></Route>
         <Route path="/header" element={<Header></Header>}></Route>
         <Route path="/header/profile" element={<EditProfile></EditProfile>}></Route>
+        <Route path="/header/flights" element={<Flights></Flights>}></Route>
     </Routes>
  </BrowserRouter>
 )
