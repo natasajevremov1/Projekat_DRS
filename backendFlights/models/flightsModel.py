@@ -15,5 +15,8 @@ class Flights(db.Model):
     created_by_id=db.Column(db.Integer,nullable=False)
     ticket_price=db.Column(db.Numeric(10,2),default=0.00)
     
+    status = db.Column(db.String(20), nullable=False, default="pending")
+    rejection_reason = db.Column(db.String(255), nullable=True)  # opcionalno
+    
     
     

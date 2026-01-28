@@ -7,6 +7,10 @@ import AdminUsers from "./components/AdminUsers";
 import Header from "./components/Header";
 import EditProfile from "./components/EditProfile";
 import Flights from "./components/Flights";
+import FlightsOverview from "./components/FlightsOverview";
+import EditFlight from "./components/EditFlight";
+import RejectedFlights from "./components/RejectedFlights";
+
 
 function App(){
 
@@ -19,6 +23,11 @@ return(
         <Route path="/header" element={<Header></Header>}></Route>
         <Route path="/header/profile" element={<EditProfile></EditProfile>}></Route>
         <Route path="/header/flights" element={<Flights></Flights>}></Route>
+        <Route path="/header/overview" element={<FlightsOverview></FlightsOverview>}></Route>
+        <Route path="/header/approved" element={<FlightsOverview></FlightsOverview>}></Route>
+        <Route path="/flights/rejected" element={<RejectedFlights></RejectedFlights>}></Route>
+        <Route path="/flights/rejected/:id" element={<EditFlight />} />
+
     </Routes>
  </BrowserRouter>
 )
