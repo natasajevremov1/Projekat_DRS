@@ -26,7 +26,7 @@ EMAIL_PASSWORD=os.getenv("EMAIL_PASSWORD")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
 
-CORS(app) #dozvoljaava reactu da pristupi backendu
+CORS(app,supports_credentials=True) #dozvoljaava reactu da pristupi backendu
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 
 jwt=JWTManager(app)

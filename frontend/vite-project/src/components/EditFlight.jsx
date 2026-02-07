@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import Header from "./Header";
+import CreatableSelect from "react-select/creatable";
 
 function EditFlight() {
   const { id } = useParams(); // id leta iz URL-a
@@ -9,9 +10,11 @@ function EditFlight() {
   const [flight, setFlight] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedAirline, setSelectedAirline] = useState(null);
+  const [airlines,setAirlines]=useState([]);
   const [formData, setFormData] = useState({
     flight_name: "",
-    airline_name: "",
+    airline_id: "",
     length_of_flight: "",
     flight_duration_minutes: "",
     departure_time: "",
@@ -20,8 +23,10 @@ function EditFlight() {
     ticket_price: ""
   });
 
+  const token = localStorage.getItem("token");
+
   useEffect(() => {
-    const token = localStorage.getItem("token");
+
     axios.get(`http://127.0.0.1:5001/flights/${id}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -29,7 +34,7 @@ function EditFlight() {
       setFlight(res.data);
       setFormData({
         flight_name: res.data.flight_name,
-        airline_name: res.data.airline_name,
+        airline_id: res.data.airline_id,
         length_of_flight: res.data.length_of_flight,
         flight_duration_minutes: res.data.flight_duration_minutes,
         departure_time: res.data.departure_time,
@@ -37,10 +42,25 @@ function EditFlight() {
         airport_of_arrival: res.data.airport_of_arrival,
         ticket_price: res.data.ticket_price
       });
+      setSelectedAirline({
+        value:res.data.airline_id,
+        label:res.data.airline_name
+      });
     })
     .catch(err => setError("Error loading flight"))
     .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(()=>{
+    axios.get(`http://127.0.0.1:5001/companies`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res =>{
+        const options = res.data.map(a => ({ value: a.id, label: a.name }));
+        setAirlines(options);
+      })
+      .catch(err => console.error(err));
+  },[]);
 
   const handleChange = (e) => {
     setFormData({...formData, [e.target.name]: e.target.value});
@@ -49,11 +69,41 @@ function EditFlight() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const token = localStorage.getItem("token");
-
+   
     try {
-      await axios.put(`http://127.0.0.1:5001/flights/${id}`, formData, {
-        headers: { Authorization: `Bearer ${token}` }
+      let airlineId;
+
+      if (!selectedAirline) {
+                alert("Please select or type an airline");
+                setLoading(false);
+                return;
+            }
+
+      if(selectedAirline.__isNew__){
+
+          const resAirline = await axios.post(
+              `http://127.0.0.1:5001/companies`,
+              {name:selectedAirline.label.trim()},
+              {headers: {Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'}}
+          );
+
+          airlineId = resAirline.data.id;
+
+          const updatedAirlines = await axios.get(
+              `http://127.0.0.1:5001/companies`,
+              {headers: { Authorization: `Bearer ${token}`}}
+          );
+          
+          const options = updatedAirlines.data.map(a=> ({value: a.id, label:a.name}));
+          setAirlines(options);
+      }else{
+        airlineId = selectedAirline.value;
+      }
+
+      await axios.put(`http://127.0.0.1:5001/flights/${id}`, 
+        {...formData, airline_id: airlineId}, 
+        {headers: { Authorization: `Bearer ${token}` }
       });
       navigate("/header/approved"); // vrati se na listu letova
     } catch {
@@ -94,13 +144,14 @@ function EditFlight() {
           </div>
 
           <div className="register-group">
-            <label>Airline Name</label>
-            <input
-              type="text"
-              name="airline_name"
-              value={formData.airline_name}
-              onChange={handleChange}
-            />
+             <label>Airline Name</label>
+              <CreatableSelect
+                isClearable
+                value={selectedAirline}
+                onChange={setSelectedAirline}
+                options={airlines}
+                placeholder= "Select or type airline"
+              />
           </div>
 
           <div className="register-group">

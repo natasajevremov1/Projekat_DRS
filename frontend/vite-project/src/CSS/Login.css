@@ -434,3 +434,6 @@ tr:hover .tooltip-cell::after {
   transform: translateX(-50%) translateY(-10px);
 }
 
+.tabs{
+    display: flex;
+}
