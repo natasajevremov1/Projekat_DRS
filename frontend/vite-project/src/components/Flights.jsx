@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "./Header";
 import axios from "axios";
-
+import CreatableSelect from "react-select/creatable";
 
 function Flights(){
     const [flight_name,SetFlightsName]=useState("");
-    const [airline_name,SetAirlineName]=useState("");
     const [length_of_flight,SetLengthOfFlight]=useState("");
     const [flight_duration_minutes,SetFlightDuration]=useState("");
     const [departure_time,SetDepartureTime]=useState("");
@@ -15,9 +14,34 @@ function Flights(){
     const [errorMessage,setErrorMessage]=useState("");
     const [loading,setLoading]=useState(false);
 
-    function handleSubmit(e){
+    const [airlines,setAirlines]=useState([]);
+    const [selectedAirline, setSelectedAirline] = useState(null);
+
+    const token = localStorage.getItem("token");
+
+    useEffect(()=>{
+        setLoading(true);
+        //const token = localStorage.getItem("token");
+        console.log("TOKEN 1:", token);
+        const role=localStorage.getItem("role");
+        if (!token) {
+        setErrorMessage("No token found. Please login.");
+        setLoading(false);
+        return;
+        }
+        axios.get(`http://127.0.0.1:5001/companies`, {
+            headers: { Authorization: `Bearer ${token}` }
+         })
+         .then(res =>{
+            const options = res.data.map(a => ({ value: a.id, label: a.name }));
+            setAirlines(options);
+         })
+         .catch(err => console.error(err));
+    },[]);
+
+    const handleSubmit = async (e) => {
         e.preventDefault();  //da se ne refreshuje odmah
-        if(!flight_name || ! airline_name || !length_of_flight || !flight_duration_minutes || !departure_airport
+        if(!flight_name || !selectedAirline || !length_of_flight || !flight_duration_minutes || !departure_airport
             || ! departure_time || ! airport_of_arrival || !ticket_price
         ){
             setErrorMessage("All fileds must be filled");
@@ -26,44 +50,81 @@ function Flights(){
             setErrorMessage("");
             setLoading(true);
         }
+        
+        try{
+            let airlineId = selectedAirline.value;
 
-        axios.post("http://127.0.0.1:5001/header/flights",{
-            flight_name,
-            airline_name,
-            length_of_flight,
-            flight_duration_minutes,
-            departure_time,
-            departure_airport,
-            airport_of_arrival,
-            ticket_price     
-        },{
-            headers:{
-                Authorization: `Bearer ${localStorage.getItem("token")}`
+            if(selectedAirline.__isNew__){
+                console.log(selectedAirline);
+                console.log(token);
+                const resAirline = await axios.post(
+                    `http://127.0.0.1:5001/companies`,
+                    {name:selectedAirline.label.trim()},
+                    {headers: {Authorization: `Bearer ${token}`,
+                             'Content-Type': 'application/json'}}
+                );
+
+                airlineId = resAirline.data.id;
+
+                const updatedAirlines = await axios.get(
+                    `http://127.0.0.1:5001/companies`,
+                    {headers: {Authorization: `Bearer ${token}` }}
+                    
+                );
+
+                const options = updatedAirlines.data.map(a=> ({value: a.id, label:a.name}));
+                setAirlines(options);
             }
-        })
-        .then(res=>{
-            alert(res.data.message);
+            console.log({
+                flight_name,
+                airline_id: airlineId,
+                length_of_flight,
+                flight_duration_minutes,
+                departure_time,
+                departure_airport,
+                airport_of_arrival,
+                ticket_price
+            });
+
+            const resFlight = await axios.post("http://127.0.0.1:5001/header/flights",{
+                flight_name,
+                airline_id: airlineId,
+                length_of_flight: parseInt(length_of_flight),
+                flight_duration_minutes: parseInt(flight_duration_minutes),
+                departure_time,
+                departure_airport,
+                airport_of_arrival,
+                ticket_price: parseFloat(ticket_price)    
+            },{
+                headers:{
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            alert(resFlight.data.message);
+
             SetFlightsName("");
-            SetAirlineName("");
+            setSelectedAirline(null);
             SetLengthOfFlight("");
             SetFlightDuration("");
             SetDepartureTime("");
             SetDepartureAir("");
             SetAirportOfArrival("");
             SetTicketPrice("");
-        })
-        .catch(err=>{
+        }
+        catch(err){
             if(err.response){
                 alert(err.response.data.message);
             }else{
                 console.error(err);
             }
-        })
-        .finally(()=>{
+        }
+        finally{
             setLoading(false);
-        });
+        }
 
-    }
+    };
 
 
 
@@ -84,9 +145,13 @@ function Flights(){
                 </div>
                 <div className=" register-group">
                     <label>Airline Name</label>
-                    <input type="text"
-                    value={airline_name}
-                    onChange={(e)=>SetAirlineName(e.target.value)}></input>
+                    <CreatableSelect
+                        isClearable
+                        options={airlines}
+                        value={selectedAirline}
+                        onChange={setSelectedAirline}
+                        placeholder="Select or type airline"
+                    />
                 </div>
                 <div className="register-group">
                     <label>Length Of Flight</label>
@@ -125,7 +190,7 @@ function Flights(){
                     onChange={(e)=>SetTicketPrice(e.target.value)}></input>
                 </div>
                 </div>
-                <button type="submit" disabled={loading}>Create</button>
+                <button type="submit"/* disabled={loading}*/>Create</button>
                 {errorMessage && <p className="error">{errorMessage}</p>}
 
             

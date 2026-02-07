@@ -2,11 +2,19 @@ import { useState, useEffect } from "react";
 import Header from "./Header";
 import axios from "axios";
 import io from "socket.io-client";
+import Countdown from "react-countdown";
+import Select from "react-select/creatable";
 
 function FlightsOverview() {
   const [flights, setFlights] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [activeTab,setActiveTab] = useState("upcoming");
+  const [search, setSearch] = useState("");
+
+  const [selectedAirline,setSelectedAirline]=useState(null);
+  const [airlines,setAirlines] = useState([]);
 
   const role = localStorage.getItem("role");
 
@@ -30,7 +38,7 @@ function FlightsOverview() {
       .then(res => {
         // Ako korisnik nije ADMIN, filtriraj samo APPROVED letove
         if (role === "USER" || role === "MANAGER") {
-          setFlights(res.data.filter(f => f.status === "approved"));
+          setFlights(res.data.filter(f => f.status === "approved" ||  f.status === "cancelled"));
         } else {
           setFlights(res.data);
         }
@@ -44,7 +52,18 @@ function FlightsOverview() {
       })
       .finally(() => setLoading(false));
 
-    const socket = io("http://127.0.0.1:5001");
+      axios.get("http://127.0.0.1:5001/companies",
+            {headers: {Authorization: `Bearer ${token}`}}
+        )
+        .then(res=>{
+            const options = res.data.map((a)=> ({value:a.id,label:a.name}));
+            setAirlines(options);
+        })
+        .catch(err=>console.log(err));
+
+    const socket = io("http://127.0.0.1:5001",
+       {  transports: ["polling","websocket"] }
+    );
 
     // Real-time dodavanje novih letova
     socket.on("new-flight", (newFlight) => {
@@ -66,6 +85,29 @@ function FlightsOverview() {
           f.id === flightInfo.id ? { ...f, status: "approved" } : f
         )
       );
+    });
+
+    socket.on("flight-cancelled", (flightInfo) => {
+      setFlights(prev =>
+        prev.map(f =>
+          f.id === flightInfo.id ? { ...f, status: "cancelled" } : f
+        )
+      );
+    });
+
+    socket.on("flight_update", (updatedFlight) => {
+        console.log("updating",updatedFlight)
+        setFlights(prevFlights => {
+            const index = prevFlights.findIndex(f => f.id === updatedFlight.id);
+
+            if(index !== -1){
+                const newFlights = [...prevFlights];
+                newFlights[index]={...newFlights[index],...updatedFlight};
+                return newFlights;
+            }else{
+                return[...prevFlights,updatedFlight];
+            }
+        });
     });
 
     return () => socket.disconnect();
@@ -115,6 +157,81 @@ function FlightsOverview() {
     }
   };
 
+  
+  const handleCancel = async (id)=>{
+    const token = localStorage.getItem("token");
+    setLoading(true);
+    try {
+      await axios.post(
+        `http://127.0.0.1:5001/header/cancel/${id}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setFlights(prev =>
+        prev.map(f =>
+          f.id === id ? { ...f, status: "cancelled" } : f
+        )
+      );
+    } catch {
+      alert("Error cancelling flight");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  
+  function FlightCountdown({arrival_time}){
+      const render = ({hours,minutes,seconds,completed})=>{
+          if(completed){
+              return<span>Arrived</span>
+          }else{
+              return(
+                  <span>
+                      {hours.toString().padStart(2,"0")}:
+                      {minutes.toString().padStart(2,"0")}:
+                      {seconds.toString().padStart(2,"0")}
+                  </span>
+              );
+          }
+      };
+      return <Countdown date={new Date(arrival_time)} renderer={render}/>  
+  };
+
+  const filteredFlights = flights.filter(flight =>{
+      const matchesName = flight.flight_name
+          .toLowerCase()
+          .includes(search.toLowerCase());
+            
+      const matchesAirline = !selectedAirline || flight.airline_id === selectedAirline.value;
+      return matchesName && matchesAirline;
+  });
+
+  const visibleFlights = filteredFlights.filter(
+      flight=>flight.arrival_state === activeTab
+  );
+
+  const customStyles = {
+    control: (provided) => ({
+        ...provided,
+        backgroundColor: "white", // background of the input
+        color: "black",           // text color
+    }),
+    singleValue: (provided) => ({
+        ...provided,
+        color: "black",           // selected value text color
+    }),
+    menu: (provided) => ({
+        ...provided,
+        backgroundColor: "white", // dropdown menu background
+    }),
+    option: (provided, state) => ({
+        ...provided,
+        color: "black",           // text color of options
+        backgroundColor: state.isFocused ? "#eee" : "white", // hover/focus
+    }),
+  };
+
   return (
     <div className="main-page">
       <Header />
@@ -123,7 +240,36 @@ function FlightsOverview() {
         <div className="admin-container1">
           <h2>Flights Overview</h2>
           {error && <p className="error">{error}</p>}
+          <div className ="register-group">
+              <input
+                  type="text"
+                  placeholder="Search flights"
+                  value={search}
+                  onChange={(e)=>setSearch(e.target.value)}
+              />
 
+              
+              <Select
+                  styles = {customStyles}
+                  isClearable
+                  placeholder = "Select airline"
+                  vlaue = {selectedAirline}
+                  onChange={setSelectedAirline}
+                  options={airlines}
+                  
+              />
+          </div>
+          <div className="tabs">
+              <button onClick={() => setActiveTab("upcoming")} >
+                  Upcoming 
+              </button>
+              <button onClick={() => setActiveTab("in_progress")} >
+                  In Progress
+              </button>
+              <button onClick={() => setActiveTab("finished")} >
+                  Finished
+              </button>
+          </div>
           <table border="1">
             <thead>
               <tr>
@@ -135,25 +281,33 @@ function FlightsOverview() {
                 <th>Departure</th>
                 <th>From</th>
                 <th>To</th>
-                <th>Created By</th>
+                {role === "ADMIN" && <th>Created By</th>}
                 <th>Ticket Price</th>
+                {activeTab==="in_progress" && <th>Timer</th>}
                 {role === "ADMIN" && <th>Action</th>}
               </tr>
             </thead>
             <tbody>
-              {flights.map((f) => (
+              {visibleFlights.length === 0 ? (
+                <tr>
+                    <td colSpan={8} style={{textAlign: "center"}}>
+                        No flights found.
+                    </td>
+                </tr>
+              ) : (
+               visibleFlights.map((f) => (
                 <tr key={f.id}>
                   <td>{f.id}</td>
                   <td>{f.flight_name}</td>
-                  <td>{f.airline_name}</td>
+                  <td>{f.airline_name || "Unknown"}</td>
                   <td>{f.length_of_flight}</td>
                   <td>{f.flight_duration_minutes}</td>
                   <td>{new Date(f.departure_time).toLocaleString()}</td>
                   <td>{f.departure_airport}</td>
                   <td>{f.airport_of_arrival}</td>
-                  <td>{f.created_by_id}</td>
+                  {role === "ADMIN" && <td>{f.created_by_id}</td>}
                   <td>{f.ticket_price.toFixed(2)}</td>
-
+                  {f.arrival_state === "in_progress" && <td> <FlightCountdown arrival_time={f.arrival_time}/></td>}
                   <td>
                     {role === "ADMIN" && (
                       <>
@@ -168,9 +322,10 @@ function FlightsOverview() {
                           </>
                         )}
 
-                        {f.status === "approved" && (
+                        {f.status === "approved" && <span>✔ Approved </span>}
+                        {f.status === "approved" && 
+                         f.arrival_state === "upcoming" && (
                           <>
-                            <span>✔ Approved </span>
                             <button onClick={() => handleCancel(f.id)} disabled={loading}>
                               Cancel
                             </button>
@@ -195,7 +350,8 @@ function FlightsOverview() {
                     }
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
 
