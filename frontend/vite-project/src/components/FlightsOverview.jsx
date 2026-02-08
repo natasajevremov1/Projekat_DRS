@@ -180,6 +180,23 @@ function FlightsOverview() {
     }
   };
 
+
+  const handleBoughtTicket = async (id) => {
+    const token = localStorage.getItem("token");
+    setLoading(true);
+    try {
+      await axios.post(
+        `http://127.0.0.1:5001/header/bought/${id}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    }
+      catch {
+        alert("Error purchasing ticket");
+      } finally {
+        setLoading(false);
+      }
+    };
   
   function FlightCountdown({arrival_time}){
       const render = ({hours,minutes,seconds,completed})=>{
@@ -328,6 +345,15 @@ function FlightsOverview() {
                           <>
                             <button onClick={() => handleCancel(f.id)} disabled={loading}>
                               Cancel
+                            </button>
+                          </>
+                        )}
+
+                        {f.status === "approved" && 
+                         f.arrival_state === "upcoming" && (
+                          <>
+                            <button onClick={() => handleBoughtTicket(f.id)} disabled={loading}>
+                              Buy
                             </button>
                           </>
                         )}

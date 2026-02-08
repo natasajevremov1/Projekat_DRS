@@ -15,6 +15,9 @@ from flask_socketio import SocketIO
 from threading import Thread
 import time
 
+import asyncio
+from backend.models.user import Users
+
 load_dotenv()
 flights_bp = Blueprint("flights",__name__)
 socketio=SocketIO(cors_allowed_origins="*",async_mode="eventlet")
@@ -253,6 +256,35 @@ def get_approved_flights():
             "arrival_time":f.arrival_time.strftime("%Y-%m-%d %H:%M")
         })
     return jsonify(flights_list)
+
+@flights_bp.route("/header/bought/<int:flight_id>", methods=["POST"])
+@jwt_required()
+async def purchase_ticket(flight_id):
+    print("Proccesing...")
+    await asyncio.sleep(2)  
+
+    claims = get_jwt()
+    if claims["role"] != "USER":
+        return jsonify({"message": "You don't have permission."}), 403
+    
+    flight = Flights.query.options(joinedload(Flights.airlines)) \
+    .filter(Flights.id == flight_id) \
+    .first()
+    
+    if not flight:
+        return jsonify({"message": "Flight not found"}), 404
+    
+    if flight.arrival_state != "upcoming" and flight.status != "approved":
+        return jsonify({"message": "Cannot buy a non-upcoming and non-approved flight"}), 400
+
+    user = Users.query.filter_by(id=get_jwt_identity()).first()
+    if not user:
+        return jsonify({"message": "User not found"}), 404 
+    if user.accountBalance < flight.ticket_price:
+        return jsonify({"message": "Insufficient funds"}), 400
+    user.accountBalance -= flight.ticket_price
+    db.session.commit()
+    print(f"Ticket purchased for user {user.username} on flight {flight.flight_name}")
 
 @flights_bp.route("/flights/rejected")
 @jwt_required()
