@@ -198,6 +198,23 @@ function FlightsOverview() {
         setLoading(false);
       }
     };
+
+    
+  const sendReport = async (activeTab)=>{
+      const token = localStorage.getItem("token");
+          try{
+              await axios.post("http://127.0.0.1:5001/flights/report",
+                  {status:activeTab},
+                  { headers: { "Content-Type": "application/json",
+                                Authorization: `Bearer ${token}`
+                    }/*, withCredentials: true */}
+              );
+              alert("Report sent successfully!");
+          }catch(error){
+              console.error("Error sending report!",error);
+          }
+  };
+
   
   function FlightCountdown({arrival_time}){
       const render = ({hours,minutes,seconds,completed})=>{
@@ -381,8 +398,16 @@ function FlightsOverview() {
               )}
             </tbody>
           </table>
-
+          <div></div>
+          <div>
+            { role === "ADMIN" && (
+              <button onClick={()=>sendReport(activeTab)}>
+                  Make and send the flights report
+              </button>
+            )}
+          </div>
         </div>
+        
       </div>
     </div>
   );

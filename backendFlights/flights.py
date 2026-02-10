@@ -20,9 +20,18 @@ from models.purchaseModel import TicketPurchase
 
 from multiprocessing import Process
 
+from flask_mail import Mail,Message
+from reportlab.platypus import SimpleDocTemplate,Table, TableStyle,Paragraph
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import cm
+from io import BytesIO
+
 load_dotenv()
 flights_bp = Blueprint("flights",__name__)
 socketio=SocketIO(cors_allowed_origins="*",async_mode="eventlet")
+mail = Mail()
 
 def create_app():
     flights=Flask(__name__)
@@ -32,6 +41,16 @@ def create_app():
     
     flights.config["SQLALCHEMY_DATABASE_URI"]=os.getenv("DATABASE_URL")
     flights.config["SQLALCHEMY_TRACK_MODIFICATIONS"]=False
+
+    flights.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER")
+    flights.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT",587))
+    flights.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS","True") == "True"
+    flights.config["MAIL_USE_SSL"] = os.getenv("MAIL_USE_SSL", "False") == "True"
+    flights.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
+    flights.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
+    flights.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_DEFAULT_SENDER", flights.config["MAIL_USERNAME"])
+
+    mail.init_app(flights)
 
     db.init_app(flights)
     jwt=JWTManager(flights)
@@ -262,7 +281,7 @@ def get_approved_flights():
 def purchase_process(user_id, flight_id):
     print(f"[PROCESS] Purchase started | user={user_id}, flight={flight_id}")
     
-    time.sleep(2)  # simulacija obrade (sleep kao proces)
+    time.sleep(15)  # simulacija obrade (sleep kao proces)
     
     print(f"[PROCESS] Purchase finished | user={user_id}, flight={flight_id}")
 
@@ -289,7 +308,7 @@ def purchase_ticket(flight_id):
     existing = TicketPurchase.query.filter_by(user_id=uid, flight_id=flight.id).first()
     if existing:
         return jsonify({"message": "You already bought a ticket for this flight"}), 400
-
+    
     purchase = TicketPurchase(user_id=uid, flight_id=flight.id)
     db.session.add(purchase)
     db.session.commit()
@@ -557,6 +576,118 @@ def add_companies():
     return jsonify({"id":airline.id,
                     "name": airline.name}),201
 
+@flights_bp.route("/flights/report",methods=["POST"])
+@jwt_required()
+def send_report():
+    try:
+        admin_mail = os.getenv("MAIL_USERNAME")
+        retData = request.get_json()
+        status = retData.get("status")
+
+        print("Received report data:", status)
+
+        flights = Flights.query.options(joinedload(Flights.airlines)) \
+        .filter(Flights.arrival_state==status).all()
+
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer,pagesize=A4)
+
+        data = [["Flight ID", "Flight Name", "Airline Name","Length of Flight", "Departure","Departure Airport",
+                "Arrival", "Arrival Airport","Flight Duration (minutes)", "Created by (id)",
+                "Ticket Price", "Status"]]
+
+        
+        for f in flights:
+            data.append([
+                f.id if f.id is not None else 0,
+                str(f.flight_name) if f.flight_name else "",
+                str(f.airlines.name)  if f.airlines and f.airlines.name  else "Unknown",
+                f.length_of_flight if f.length_of_flight is not None else 0,
+                str(f.departure_time) if f.departure_time else "",
+                str(f.departure_airport) if f.departure_airport else "",
+                str(f.arrival_time) if f.arrival_time else "",
+                str(f.airport_of_arrival) if f.airport_of_arrival else "",
+                f.flight_duration_minutes if f.flight_duration_minutes is not None else 0,
+                f.created_by_id if f.created_by_id is not None else 0,
+                float(f.ticket_price) if f.ticket_price is not None else 0.0,
+                str(f.status) if f.status else ""
+            ])
+
+        styles = getSampleStyleSheet()
+        normal_style = styles["Normal"]
+
+        # Columns that should wrap
+        wrap_columns = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
+
+        wrapped_data = []
+
+        for row in data:
+            new_row = []
+            for col_index, cell in enumerate(row):
+                cell_str = str(cell)
+
+                if col_index in wrap_columns:
+                    new_row.append(Paragraph(cell_str, normal_style))
+                else:
+                    new_row.append(cell_str)
+
+            wrapped_data.append(new_row)
+
+        
+        col_widths = [
+            1.2*cm,  # ID
+            2*cm,    # Flight name
+            2*cm,    # Airline
+            1.5*cm,  # Length
+            2*cm,    # Departure
+            1.8*cm,  # Departure Airport
+            2*cm,    # Arrival
+            1.8*cm,  # Arrival Airport
+            1.5*cm,  # Duration
+            1.5*cm,  # Created by
+            1.5*cm,  # Price
+            1.5*cm   # Status
+        ]
+        table = Table(wrapped_data,colWidths=col_widths)
+
+        table.setStyle(TableStyle([
+            ("BACKGROUND",(0,0),(-1,0),colors.gray),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ("ALIGN",(0,0),(-1,-1),"CENTER"),
+            ('FONTSIZE', (0, 0), (-1, -1), 6),                 
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ]))
+
+        elements=[table]
+        
+        doc.build(elements)
+
+        buffer.seek(0)
+        pdf_bytes = buffer.read()
+        if not pdf_bytes:
+            return jsonify({"error": "PDF is empty"}), 500
+
+        msg = Message(
+            subject=f"{status.upper()} Flights Report",
+            recipients=[admin_mail],
+            body = f"Attached is the {status} flights report."
+        )
+
+        msg.attach(
+            filename=f"{status}_flghts_report.pdf",
+            content_type="application/pdf",
+            data=pdf_bytes
+        )
+
+        mail.send(msg)
+        print(f"Report for status '{status}' sent to {admin_mail}")
+        return jsonify({"message":"Report sent successfully!"}),200
+
+    except Exception as e:
+        print("Error in /flights/report:", e) 
+        return jsonify({"error": "Internal server error"}), 500
+
+
 def to_datetime(value):
     if value is None:
         return None
@@ -579,19 +710,19 @@ def refresh_flight_states_socket(app):
     with app.app_context():
         now = datetime.now().replace(microsecond=0)
         flights = Flights.query.all()
-        print("NOW: ",now)
+        #("NOW: ",now)
         for flight in flights:
-            print("EMITTING UPDATE", flight.id)
+            #print("EMITTING UPDATE", flight.id)
 
             departure_time = to_datetime(flight.departure_time)
             arrival_time = to_datetime(flight.arrival_time)
-            print("DT: ",departure_time," AT: ",arrival_time)
+            #print("DT: ",departure_time," AT: ",arrival_time)
             old_state = flight.arrival_state
-            print("Before chacking: ",old_state)
+            #print("Before chacking: ",old_state)
 
             if flight.status == "cancelled":
                 flight.arrival_state = "finished"
-                print("Cancelled:  ",flight.arrival_state)
+               # print("Cancelled:  ",flight.arrival_state)
             else:
                 if now < departure_time:
                     flight.arrival_state = "upcoming"
@@ -601,7 +732,7 @@ def refresh_flight_states_socket(app):
                     flight.arrival_state = "finished"
             
 
-            print("After checking:  ",flight.arrival_state)
+           # print("After checking:  ",flight.arrival_state)
             # emit only if state changed
             if old_state != flight.arrival_state:
                 socketio.emit(
