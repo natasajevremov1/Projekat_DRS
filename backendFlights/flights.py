@@ -16,7 +16,9 @@ from threading import Thread
 import time
 
 import asyncio
-from backend.models.user import Users
+from models.purchaseModel import TicketPurchase
+
+from multiprocessing import Process
 
 load_dotenv()
 flights_bp = Blueprint("flights",__name__)
@@ -257,34 +259,165 @@ def get_approved_flights():
         })
     return jsonify(flights_list)
 
+def purchase_process(user_id, flight_id):
+    print(f"[PROCESS] Purchase started | user={user_id}, flight={flight_id}")
+    
+    time.sleep(2)  # simulacija obrade (sleep kao proces)
+    
+    print(f"[PROCESS] Purchase finished | user={user_id}, flight={flight_id}")
+
 @flights_bp.route("/header/bought/<int:flight_id>", methods=["POST"])
 @jwt_required()
-async def purchase_ticket(flight_id):
-    print("Proccesing...")
-    await asyncio.sleep(2)  
-
+def purchase_ticket(flight_id):
     claims = get_jwt()
     if claims["role"] != "USER":
         return jsonify({"message": "You don't have permission."}), 403
-    
+
     flight = Flights.query.options(joinedload(Flights.airlines)) \
-    .filter(Flights.id == flight_id) \
-    .first()
-    
+        .filter(Flights.id == flight_id) \
+        .first()
+
     if not flight:
         return jsonify({"message": "Flight not found"}), 404
-    
-    if flight.arrival_state != "upcoming" and flight.status != "approved":
-        return jsonify({"message": "Cannot buy a non-upcoming and non-approved flight"}), 400
 
-    user = Users.query.filter_by(id=get_jwt_identity()).first()
-    if not user:
-        return jsonify({"message": "User not found"}), 404 
-    if user.accountBalance < flight.ticket_price:
-        return jsonify({"message": "Insufficient funds"}), 400
-    user.accountBalance -= flight.ticket_price
+    
+    if flight.arrival_state != "upcoming" or flight.status != "approved":
+        return jsonify({"message": "Cannot buy a non-upcoming or non-approved flight"}), 400
+
+    uid = int(get_jwt_identity())
+
+    existing = TicketPurchase.query.filter_by(user_id=uid, flight_id=flight.id).first()
+    if existing:
+        return jsonify({"message": "You already bought a ticket for this flight"}), 400
+
+    purchase = TicketPurchase(user_id=uid, flight_id=flight.id)
+    db.session.add(purchase)
     db.session.commit()
-    print(f"Ticket purchased for user {user.username} on flight {flight.flight_name}")
+
+     #pokretanje procesa 
+    p = Process(target=purchase_process, args=(uid, flight.id))
+    p.start()
+
+    return jsonify({"message": "Ticket purchased"}), 200
+
+# === USER: pregled kupljenih letova + ocenjivanje ===
+
+@flights_bp.route("/user/myflights", methods=["GET"])
+@jwt_required()
+def get_my_flights():
+    claims = get_jwt()
+    if claims["role"] != "USER":
+        return jsonify({"message": "You don't have permission."}), 403
+
+    uid = int(get_jwt_identity())
+    purchases = (
+        TicketPurchase.query
+        .options(joinedload(TicketPurchase.flight).joinedload(Flights.airlines))
+        .filter(TicketPurchase.user_id == uid)
+        .order_by(TicketPurchase.purchased_at.desc())
+        .all()
+    )
+
+    result = []
+    for p in purchases:
+        f = p.flight
+        if not f:
+            continue
+
+        result.append({
+            "purchase_id": p.id,
+            "purchased_at": p.purchased_at.strftime("%Y-%m-%d %H:%M"),
+            "rating": p.rating,
+            "rated_at": p.rated_at.strftime("%Y-%m-%d %H:%M") if p.rated_at else None,
+            "flight": {
+                "id": f.id,
+                "flight_name": f.flight_name,
+                "airline_id": f.airline_id,
+                "airline_name": f.airlines.name if f.airlines else "Unknown",
+                "length_of_flight": f.length_of_flight,
+                "flight_duration_minutes": f.flight_duration_minutes,
+                "departure_time": f.departure_time.strftime("%Y-%m-%d %H:%M"),
+                "departure_airport": f.departure_airport,
+                "airport_of_arrival": f.airport_of_arrival,
+                "ticket_price": float(f.ticket_price),
+                "status": f.status,
+                "arrival_state": f.arrival_state,
+                "arrival_time": f.arrival_time.strftime("%Y-%m-%d %H:%M"),
+            }
+        })
+
+    return jsonify(result), 200
+
+@flights_bp.route("/user/rate/<int:flight_id>", methods=["POST"])
+@jwt_required()
+def rate_flight(flight_id):
+    claims = get_jwt()
+    if claims["role"] != "USER":
+        return jsonify({"message": "You don't have permission."}), 403
+
+    uid = int(get_jwt_identity())
+    data = request.get_json() or {}
+    rating = data.get("rating")
+
+    try:
+        rating = int(rating)
+    except:
+        return jsonify({"message": "Rating must be a number (1-5)"}), 400
+
+    if rating < 1 or rating > 5:
+        return jsonify({"message": "Rating must be between 1 and 5"}), 400
+
+    purchase = TicketPurchase.query.filter_by(user_id=uid, flight_id=flight_id).first()
+    if not purchase:
+        return jsonify({"message": "You can rate only flights you purchased"}), 404
+
+    if purchase.rating is not None:
+        return jsonify({"message": "Flight already rated"}), 400
+
+    flight = Flights.query.get(flight_id)
+    if not flight:
+        return jsonify({"message": "Flight not found"}), 404
+
+    if flight.arrival_state != "finished":
+        return jsonify({"message": "You can rate only after the flight is finished"}), 400
+
+    purchase.rating = rating
+    purchase.rated_at = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({"message": "Rating saved"}), 200
+
+# ADMIN: pregled svih ocena
+
+@flights_bp.route("/admin/ratings", methods=["GET"])
+@jwt_required()
+def get_all_ratings():
+    claims = get_jwt()
+    if claims["role"] != "ADMIN":
+        return jsonify({"message": "You don't have permission."}), 403
+
+    purchases = (
+        TicketPurchase.query
+        .options(joinedload(TicketPurchase.flight).joinedload(Flights.airlines))
+        .filter(TicketPurchase.rating.isnot(None))
+        .order_by(TicketPurchase.rated_at.desc())
+        .all()
+    )
+
+    result = []
+    for p in purchases:
+        f = p.flight
+        result.append({
+            "user_id": p.user_id,
+            "flight_id": f.id if f else None,
+            "flight_name": f.flight_name if f else None,
+            "airline_name": f.airlines.name if (f and f.airlines) else None,
+            "rating": p.rating,
+            "rated_at": p.rated_at.strftime("%Y-%m-%d %H:%M") if p.rated_at else None,
+    })
+
+
+    return jsonify(result), 200
 
 @flights_bp.route("/flights/rejected")
 @jwt_required()
