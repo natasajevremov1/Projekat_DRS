@@ -4,6 +4,7 @@ import axios from "axios";
 import io from "socket.io-client";
 import Countdown from "react-countdown";
 import Select from "react-select/creatable";
+import { Link } from "react-router-dom";
 
 function FlightsOverview() {
   const [flights, setFlights] = useState([]);
@@ -349,31 +350,31 @@ function FlightsOverview() {
                           </>
                         )}
 
-                        {f.status === "approved" && 
-                         f.arrival_state === "upcoming" && (
-                          <>
-                            <button onClick={() => handleBoughtTicket(f.id)} disabled={loading}>
-                              Buy
-                            </button>
-                          </>
-                        )}
-
                         {f.status === "rejected" && <span>❌ Rejected</span>}
                         {f.status === "cancelled" && <span>⚠ Cancelled</span>}
                       </>
                     )}
 
-                    {(role === "USER" || role === "MANAGER")  && (
-                        <>
-                        {f.status === "rejected"  && (
-                            <Link to={`/header/edit-flight/${f.id}`}>
-                                Edit after rejection
-                            </Link>
+                    {role === "USER" && (
+                      <>
+                        {f.status === "approved" &&
+                          f.arrival_state === "upcoming" && (
+                            <button onClick={() => handleBoughtTicket(f.id)} disabled={loading}>
+                              Buy
+                            </button>
                         )}
-                         
-                        </>
-                    )
-                    }
+                      </>
+                    )}
+
+                    {role === "MANAGER" && (
+                      <>
+                        {f.status === "rejected" && (
+                          <Link to={`/header/edit-flight/${f.id}`}>
+                            Edit after rejection
+                          </Link>
+                        )}
+                      </>
+                    )}
                   </td>
                 </tr>
                 ))

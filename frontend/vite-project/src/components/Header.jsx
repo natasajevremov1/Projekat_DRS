@@ -44,6 +44,7 @@ function Header(){
                     <>
                      <Link to="/admin/users">User table</Link>
                      <Link to="/header/overview">Overview</Link>
+                     <Link to="/admin/ratings">Ratings</Link>
                
                     </>
                     )}
