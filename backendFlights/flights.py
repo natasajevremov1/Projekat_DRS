@@ -3,6 +3,9 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 import os
 from flask_jwt_extended import JWTManager
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 from models.flightsModel import db,Flights
 from models.airlineModel import Airlines
@@ -29,6 +32,7 @@ from reportlab.lib.units import cm
 from io import BytesIO
 
 load_dotenv()
+
 flights_bp = Blueprint("flights",__name__)
 socketio=SocketIO(cors_allowed_origins="*",async_mode="eventlet")
 mail = Mail()
@@ -64,6 +68,7 @@ def create_app():
 def home():
     return "Backend flights is working"
     
+            
 @flights_bp.route("/header/flights",methods=["POST"])
 @jwt_required() 
 def newFlight():
@@ -192,6 +197,7 @@ def accept_flight(flight_id):
 
 @flights_bp.route("/header/cancel/<int:flight_id>", methods=["POST"])
 @jwt_required()
+
 def cancel_flight(flight_id):
     claims = get_jwt()
     if claims["role"] != "ADMIN":
@@ -214,6 +220,7 @@ def cancel_flight(flight_id):
         "id": flight.id,
         "flight_name": flight.flight_name,
     })
+      
 
     return jsonify({"message": "Flight cancelled!"})
 

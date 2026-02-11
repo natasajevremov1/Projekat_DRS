@@ -7,6 +7,7 @@ import "../CSS/admin.css";
 import { api, flightsApi } from "../api";
 import { Link } from "react-router-dom";
 
+
 function FlightsOverview() {
   const [flights, setFlights] = useState([]);
   const [error, setError] = useState("");
@@ -15,6 +16,9 @@ function FlightsOverview() {
   const [search, setSearch] = useState("");
   const [selectedAirline, setSelectedAirline] = useState(null);
   const [airlines, setAirlines] = useState([]);
+  const [boughtFlights, setBoughtFlights] = useState([]);
+
+
   const role = localStorage.getItem("role");
 
   useEffect(() => {
@@ -88,6 +92,7 @@ function FlightsOverview() {
     return () => socket.disconnect();
   }, [role]);
 
+  
   const handleAccept = async id => {
     const token = localStorage.getItem("token");
     setLoading(true);
@@ -151,6 +156,8 @@ function FlightsOverview() {
     setLoading(true);
     try {
       await flightsApi.post(`/header/bought/${id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      alert("Succesfully bought ticket!");
+      setBoughtFlights(prev => [...prev, id]);
     } catch {
       alert("Error purchasing ticket");
     } finally {
@@ -287,7 +294,7 @@ function FlightsOverview() {
 
                         {f.status === "approved" && (
                           <>
-                            {(f.arrival_state === "upcoming" || f.arrival_state === "in_progress") && (
+                            {(f.arrival_state === "upcoming" || f.arrival_state === "finished") && (
                               <button onClick={() => handleDelete(f.id)} disabled={loading} style={{ marginLeft: "5px", backgroundColor: "red", color: "white" }}>Delete</button>
                             )}
                             {f.arrival_state === "upcoming" && (
@@ -302,10 +309,12 @@ function FlightsOverview() {
                     )}
 
                     {/* USER Actions */}
-                    {role === "USER" && f.status === "approved" && f.arrival_state === "upcoming" && (
-                      <button onClick={() => handleBoughtTicket(f.id)} disabled={loading}>Buy</button>
-                    )}
-
+{role === "USER" && f.status === "approved" && f.arrival_state === "upcoming" && !boughtFlights.includes(f.id) && (
+  <button onClick={() => handleBoughtTicket(f.id)} disabled={loading}>Buy</button>
+)}
+{role === "USER" && boughtFlights.includes(f.id) && (
+  <span>✅ Ticket bought</span>
+)}
                     {/* MANAGER Actions */}
                     {role === "MANAGER" && f.status === "rejected" && (
                       <Link to={`/header/edit-flight/${f.id}`}>Edit after rejection</Link>

@@ -39,6 +39,7 @@ function Header() {
         .catch((err) => console.log("Error loading rejected flights", err));
     }
   }, [role]);
+  
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -77,6 +78,7 @@ function Header() {
             <>
               <Link to="/admin/users">User table</Link>
               <Link to="/header/overview">Overview</Link>
+              <Link to="/admin/ratings">Ratings</Link>
             </>
           )}
           {role === "MANAGER" && (
@@ -85,7 +87,7 @@ function Header() {
               <Link to="/header/flights">New Flights</Link>
               <Link to="/header/approved">Flights</Link>
               <Link to="/flights/rejected" className="notification-bubble">
-                {rejectedCount}
+                {rejectedCount>0 && rejectedCount}
               </Link>
             </>
           )}
