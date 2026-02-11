@@ -211,8 +211,7 @@ function EditProfile(){
                                 <input 
                                     type="number"
                                     value={accountBalance}
-                                    onChange={(e)=>setAccountBalance(accountBalance + Number(e.target.value))}
-                                />
+                                    onChange={(e) => setAccountBalance(e.target.value)}                                />
                             </div>
 
 
