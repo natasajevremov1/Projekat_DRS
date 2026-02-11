@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import "../CSS/global.css";
 import "../CSS/auth.css";
 
-import { api,flightsApi } from "../api";   // ⬅️ UMESTO axios
+import { api, flightsApi } from "../api";   // ⬅️ UMESTO axios
 import { Link, useNavigate } from "react-router-dom";
 
 function Login() {
@@ -15,7 +15,6 @@ function Login() {
 
   const navigate = useNavigate();
 
-   // ✅ Ovde dodaj test za env promenljive
   console.log("API base URL:", import.meta.env.VITE_API_URL);
   console.log("Flights API base URL:", import.meta.env.VITE_FLIGHTS_API_URL);
 
@@ -43,16 +42,13 @@ function Login() {
     if (username === "" || password === "") {
       setErrorMessage("All fields are required");
       return;
-    } else {
-      setErrorMessage("");
-      setLoading(true);
     }
 
+    setErrorMessage("");
+    setLoading(true);
+
     api
-      .post("/login", {
-        username,
-        password,
-      })
+      .post("/login", { username, password })
       .then((res) => {
         localStorage.setItem("token", res.data.access_token);
         localStorage.setItem("role", res.data.role);
@@ -75,9 +71,7 @@ function Login() {
           setErrorMessage("The server is not available.");
         }
       })
-      .finally(() => {
-        setLoading(false);
-      });
+      .finally(() => setLoading(false));
   }
 
   return (
@@ -107,7 +101,6 @@ function Login() {
         <button type="submit" disabled={blocked}>
           Sign in
         </button>
-
         {loading && <div className="spinner"></div>}
 
         <div className="register-link">

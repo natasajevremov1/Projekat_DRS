@@ -10,6 +10,8 @@ import Flights from "./components/Flights";
 import FlightsOverview from "./components/FlightsOverview";
 import EditFlight from "./components/EditFlight";
 import RejectedFlights from "./components/RejectedFlights";
+import MyFlights from "./components/MyFlights";
+import AdminRatings from "./components/AdminRatings";
 
 
 function App(){
@@ -27,6 +29,10 @@ return(
         <Route path="/header/approved" element={<FlightsOverview></FlightsOverview>}></Route>
         <Route path="/flights/rejected" element={<RejectedFlights></RejectedFlights>}></Route>
         <Route path="/flights/rejected/:id" element={<EditFlight />} />
+        {/* USER: kupljeni letovi + ocenjivanje */}
+        <Route path="/users" element={<MyFlights />} />
+        {/* ADMIN: pregled ocena */}
+        <Route path="/admin/ratings" element={<AdminRatings />} />
 
     </Routes>
  </BrowserRouter>

@@ -102,94 +102,87 @@ function EditProfile() {
           <h1>Edit profile</h1>
           <p className="subtitle">Update your personal data</p>
 
-          <div className="register-grid">
-            {/* Username */}
-            <div className="register-group">
-              <label>Email address:</label>
-              <input value={username} onChange={(e) => setUsername(e.target.value)} />
-            </div>
+<div className="register-grid">
+  <div className="register-group">
+    <label>Email address:</label>
+    <input value={username} onChange={(e) => setUsername(e.target.value)} />
+  </div>
 
-            {/* Password */}
-            <div className="register-group">
-              <label>New password (optional):</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            </div>
+  <div className="register-group">
+    <label>New password (optional):</label>
+    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+  </div>
 
-            {/* Name & Lastname */}
-            <div className="register-group">
-              <label>Name:</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div className="register-group">
-              <label>Lastname:</label>
-              <input value={lastname} onChange={(e) => setLastname(e.target.value)} />
-            </div>
+  <div className="register-group">
+    <label>Name:</label>
+    <input value={name} onChange={(e) => setName(e.target.value)} />
+  </div>
 
-            {/* Date of birth */}
-            <div className="register-group">
-              <label>Date of birth:</label>
-              <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
-            </div>
+  <div className="register-group">
+    <label>Lastname:</label>
+    <input value={lastname} onChange={(e) => setLastname(e.target.value)} />
+  </div>
 
-            {/* Gender */}
-            <div className="register-group">
-              <label>Gender:</label>
-              <div className="gender-group">
-                <label>
-                  <input type="radio" value="Male" checked={gender === "Male"} onChange={(e) => setGender(e.target.value)} /> Male
-                </label>
-                <label>
-                  <input type="radio" value="Female" checked={gender === "Female"} onChange={(e) => setGender(e.target.value)} /> Female
-                </label>
-              </div>
-            </div>
+  <div className="register-group">
+    <label>Date of birth:</label>
+    <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
+  </div>
 
-            {/* Country & Street */}
-            <div className="register-group">
-              <label>Country:</label>
-              <input type="text" value={country} onChange={(e) => setCountry(e.target.value)} />
-            </div>
-            <div className="register-group">
-              <label>Street:</label>
-              <input type="text" value={street} onChange={(e) => setStreet(e.target.value)} />
-            </div>
-            <div className="register-group">
-              <label>Street number:</label>
-              <input type="text" value={streetNumber} onChange={(e) => setStreetNumber(e.target.value)} />
-            </div>
+  <div className="register-group">
+    <label>Gender:</label>
+    <div className="gender-group">
+      <label>
+        <input type="radio" value="Male" checked={gender === "Male"} onChange={(e) => setGender(e.target.value)} /> Male
+      </label>
+      <label>
+        <input type="radio" value="Female" checked={gender === "Female"} onChange={(e) => setGender(e.target.value)} /> Female
+      </label>
+    </div>
+  </div>
 
-            {/* Account balance */}
-            <div className="register-group">
-              <label>Account balance:</label>
-              <input type="number" value={accountBalance} onChange={(e) => setAccountBalance(e.target.value)} />
-            </div>
+  <div className="register-group">
+    <label>Country:</label>
+    <input type="text" value={country} onChange={(e) => setCountry(e.target.value)} />
+  </div>
 
-            {/* Profile image */}
-            <div className="register-group">
-              <label>Profile image (optional):</label>
+  <div className="register-group">
+    <label>Street:</label>
+    <input type="text" value={street} onChange={(e) => setStreet(e.target.value)} />
+  </div>
 
-              {currentImage && (
-                <div>
-                  <img
-                    src={currentImage.startsWith("blob:") ? currentImage : `http://127.0.0.1:5000/uploads/${currentImage.split("\\").pop()}`}
-                    alt="Profile"
-                    style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "50%", marginBottom: "10px" }}
-                  />
-                
-                </div>
-              )}
+  <div className="register-group">
+    <label>Street number:</label>
+    <input type="text" value={streetNumber} onChange={(e) => setStreetNumber(e.target.value)} />
+  </div>
 
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  setProfileImage(file);
-                  if (file) setCurrentImage(URL.createObjectURL(file)); // preview immediately
-                }}
-              />
-            </div>
-          </div>
+  <div className="register-group">
+    <label>Account balance:</label>
+    <input type="number" value={accountBalance} onChange={(e) => setAccountBalance(e.target.value)} />
+  </div>
+
+  <div className="register-group">
+    <label>Profile image (optional):</label>
+    {currentImage && typeof currentImage === "string" && (
+      <div>
+        <img
+          src={currentImage.startsWith("blob:") ? currentImage : `http://127.0.0.1:5000/uploads/${currentImage.split("\\").pop()}`}
+          alt="Profile"
+          style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "50%", marginBottom: "10px" }}
+        />
+      </div>
+    )}
+    <input
+      type="file"
+      accept="image/*"
+      onChange={(e) => {
+        const file = e.target.files[0];
+        setProfileImage(file);
+        if (file) setCurrentImage(URL.createObjectURL(file));
+      }}
+    />
+  </div>
+</div>
+
 
           <button type="submit" disabled={loading}>
             {loading ? "Saving..." : "Save changes"}

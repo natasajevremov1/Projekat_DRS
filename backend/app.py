@@ -13,7 +13,7 @@ from flask import send_from_directory
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-
+import time
 
 app=Flask(__name__)
 # Dozvoljava zahteve sa frontend-a
@@ -29,6 +29,10 @@ EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
 
 
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+
+
+failed_attempts = {}
+blocked_users = {}
 
 jwt=JWTManager(app)
 @jwt.invalid_token_loader
@@ -89,39 +93,55 @@ def login():
         
         user = User.query.filter_by(username=username).first()
 
-      # ❌ Ako korisnik ne postoji
+        key = f"{username}"
+        current_time = time.time()
+
+      # Ako korisnik ne postoji
         if not user:
             return jsonify({"message": "Pogrešan email ili lozinka"}), 401
+        #ako je korisnik blokiran
+        if key in blocked_users:
+            block_until = blocked_users[key]
 
-    # ⛔ Ako je korisnik blokiran
-        # ⛔ Ako je korisnik blokiran
-        if user.blocked_until and user.blocked_until > datetime.utcnow():
-            remaining_seconds = int(
-              (user.blocked_until - datetime.utcnow()).total_seconds()
-            )
-
-            return jsonify({
-                  "message": "Nalog je privremeno blokiran.",
-                  "remaining_seconds": remaining_seconds
-            }), 403
-
-    # ❌ Pogrešna lozinka
+            if current_time < block_until:
+                seconds_left = max(0,int(block_until-current_time))
+                return jsonify({
+                    "error": "User is blocked",
+                    "seconds_left":seconds_left
+                }),403
+            else:
+                del blocked_users[key]
+        #ako je pogresna lozinka
         if not check_password_hash(user.password, password):
-           user.failed_attempts += 1
+            if key not in failed_attempts:
+                failed_attempts[key] = {
+                    "count":1,
+                    "first_attempt_time":current_time
+                }
+            else:
+                failed_attempts[key]["count"] +=1
+           
+            attempts = failed_attempts[key]["count"]
 
-            # Ako ima 3 neuspešna pokušaja
-           if user.failed_attempts >= 3:
-               user.blocked_until = datetime.utcnow() + timedelta(minutes=1)  # test: 1 minut
-               user.failed_attempts = 0
+            #ako ima 3 neuspasna pokusaja
+            if attempts >= 3:
+                blocked_users[key] = current_time + 60
+                del failed_attempts[key]
 
-           db.session.commit()
-
-           return jsonify({"message": "Pogrešan email ili lozinka"}), 401
+                return jsonify({
+                    "error": "Too many failed attempts. Blockd for 60 seconds.",
+                    "seconds_left":60
+                }),403
+            
+            return jsonify({
+                "error":"wrong credentials",
+                "attempts_left":3-attempts
+            }),401
         
-      # ✅ Uspešan login
-        user.failed_attempts = 0
-        user.blocked_until = None
-        db.session.commit()
+        #ako je login uspesan
+        if key in failed_attempts:
+            del failed_attempts[key]
+
 
         token = create_access_token(identity=str(user.id),additional_claims={"role": user.role})
 

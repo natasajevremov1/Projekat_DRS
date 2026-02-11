@@ -15,9 +15,23 @@ from flask_socketio import SocketIO
 from threading import Thread
 import time
 
+import asyncio
+from models.purchaseModel import TicketPurchase
+
+from multiprocessing import Process
+
+from flask_mail import Mail,Message
+from reportlab.platypus import SimpleDocTemplate,Table, TableStyle,Paragraph
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import cm
+from io import BytesIO
+
 load_dotenv()
 flights_bp = Blueprint("flights",__name__)
 socketio=SocketIO(cors_allowed_origins="*",async_mode="eventlet")
+mail = Mail()
 
 def create_app():
     flights=Flask(__name__)
@@ -27,6 +41,16 @@ def create_app():
     
     flights.config["SQLALCHEMY_DATABASE_URI"]=os.getenv("DATABASE_URL")
     flights.config["SQLALCHEMY_TRACK_MODIFICATIONS"]=False
+
+    flights.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER")
+    flights.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT",587))
+    flights.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS","True") == "True"
+    flights.config["MAIL_USE_SSL"] = os.getenv("MAIL_USE_SSL", "False") == "True"
+    flights.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
+    flights.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
+    flights.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_DEFAULT_SENDER", flights.config["MAIL_USERNAME"])
+
+    mail.init_app(flights)
 
     db.init_app(flights)
     jwt=JWTManager(flights)
@@ -254,6 +278,166 @@ def get_approved_flights():
         })
     return jsonify(flights_list)
 
+def purchase_process(user_id, flight_id):
+    print(f"[PROCESS] Purchase started | user={user_id}, flight={flight_id}")
+    
+    time.sleep(15)  # simulacija obrade (sleep kao proces)
+    
+    print(f"[PROCESS] Purchase finished | user={user_id}, flight={flight_id}")
+
+@flights_bp.route("/header/bought/<int:flight_id>", methods=["POST"])
+@jwt_required()
+def purchase_ticket(flight_id):
+    claims = get_jwt()
+    if claims["role"] != "USER":
+        return jsonify({"message": "You don't have permission."}), 403
+
+    flight = Flights.query.options(joinedload(Flights.airlines)) \
+        .filter(Flights.id == flight_id) \
+        .first()
+
+    if not flight:
+        return jsonify({"message": "Flight not found"}), 404
+
+    
+    if flight.arrival_state != "upcoming" or flight.status != "approved":
+        return jsonify({"message": "Cannot buy a non-upcoming or non-approved flight"}), 400
+
+    uid = int(get_jwt_identity())
+
+    existing = TicketPurchase.query.filter_by(user_id=uid, flight_id=flight.id).first()
+    if existing:
+        return jsonify({"message": "You already bought a ticket for this flight"}), 400
+    
+    purchase = TicketPurchase(user_id=uid, flight_id=flight.id)
+    db.session.add(purchase)
+    db.session.commit()
+
+     #pokretanje procesa 
+    p = Process(target=purchase_process, args=(uid, flight.id))
+    p.start()
+
+    return jsonify({"message": "Ticket purchased"}), 200
+
+# === USER: pregled kupljenih letova + ocenjivanje ===
+
+@flights_bp.route("/user/myflights", methods=["GET"])
+@jwt_required()
+def get_my_flights():
+    claims = get_jwt()
+    if claims["role"] != "USER":
+        return jsonify({"message": "You don't have permission."}), 403
+
+    uid = int(get_jwt_identity())
+    purchases = (
+        TicketPurchase.query
+        .options(joinedload(TicketPurchase.flight).joinedload(Flights.airlines))
+        .filter(TicketPurchase.user_id == uid)
+        .order_by(TicketPurchase.purchased_at.desc())
+        .all()
+    )
+
+    result = []
+    for p in purchases:
+        f = p.flight
+        if not f:
+            continue
+
+        result.append({
+            "purchase_id": p.id,
+            "purchased_at": p.purchased_at.strftime("%Y-%m-%d %H:%M"),
+            "rating": p.rating,
+            "rated_at": p.rated_at.strftime("%Y-%m-%d %H:%M") if p.rated_at else None,
+            "flight": {
+                "id": f.id,
+                "flight_name": f.flight_name,
+                "airline_id": f.airline_id,
+                "airline_name": f.airlines.name if f.airlines else "Unknown",
+                "length_of_flight": f.length_of_flight,
+                "flight_duration_minutes": f.flight_duration_minutes,
+                "departure_time": f.departure_time.strftime("%Y-%m-%d %H:%M"),
+                "departure_airport": f.departure_airport,
+                "airport_of_arrival": f.airport_of_arrival,
+                "ticket_price": float(f.ticket_price),
+                "status": f.status,
+                "arrival_state": f.arrival_state,
+                "arrival_time": f.arrival_time.strftime("%Y-%m-%d %H:%M"),
+            }
+        })
+
+    return jsonify(result), 200
+
+@flights_bp.route("/user/rate/<int:flight_id>", methods=["POST"])
+@jwt_required()
+def rate_flight(flight_id):
+    claims = get_jwt()
+    if claims["role"] != "USER":
+        return jsonify({"message": "You don't have permission."}), 403
+
+    uid = int(get_jwt_identity())
+    data = request.get_json() or {}
+    rating = data.get("rating")
+
+    try:
+        rating = int(rating)
+    except:
+        return jsonify({"message": "Rating must be a number (1-5)"}), 400
+
+    if rating < 1 or rating > 5:
+        return jsonify({"message": "Rating must be between 1 and 5"}), 400
+
+    purchase = TicketPurchase.query.filter_by(user_id=uid, flight_id=flight_id).first()
+    if not purchase:
+        return jsonify({"message": "You can rate only flights you purchased"}), 404
+
+    if purchase.rating is not None:
+        return jsonify({"message": "Flight already rated"}), 400
+
+    flight = Flights.query.get(flight_id)
+    if not flight:
+        return jsonify({"message": "Flight not found"}), 404
+
+    if flight.arrival_state != "finished":
+        return jsonify({"message": "You can rate only after the flight is finished"}), 400
+
+    purchase.rating = rating
+    purchase.rated_at = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({"message": "Rating saved"}), 200
+
+# ADMIN: pregled svih ocena
+
+@flights_bp.route("/admin/ratings", methods=["GET"])
+@jwt_required()
+def get_all_ratings():
+    claims = get_jwt()
+    if claims["role"] != "ADMIN":
+        return jsonify({"message": "You don't have permission."}), 403
+
+    purchases = (
+        TicketPurchase.query
+        .options(joinedload(TicketPurchase.flight).joinedload(Flights.airlines))
+        .filter(TicketPurchase.rating.isnot(None))
+        .order_by(TicketPurchase.rated_at.desc())
+        .all()
+    )
+
+    result = []
+    for p in purchases:
+        f = p.flight
+        result.append({
+            "user_id": p.user_id,
+            "flight_id": f.id if f else None,
+            "flight_name": f.flight_name if f else None,
+            "airline_name": f.airlines.name if (f and f.airlines) else None,
+            "rating": p.rating,
+            "rated_at": p.rated_at.strftime("%Y-%m-%d %H:%M") if p.rated_at else None,
+    })
+
+
+    return jsonify(result), 200
+
 @flights_bp.route("/flights/rejected")
 @jwt_required()
 def get_rejected_flights():
@@ -392,6 +576,118 @@ def add_companies():
     return jsonify({"id":airline.id,
                     "name": airline.name}),201
 
+@flights_bp.route("/flights/report",methods=["POST"])
+@jwt_required()
+def send_report():
+    try:
+        admin_mail = os.getenv("MAIL_USERNAME")
+        retData = request.get_json()
+        status = retData.get("status")
+
+        print("Received report data:", status)
+
+        flights = Flights.query.options(joinedload(Flights.airlines)) \
+        .filter(Flights.arrival_state==status).all()
+
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer,pagesize=A4)
+
+        data = [["Flight ID", "Flight Name", "Airline Name","Length of Flight", "Departure","Departure Airport",
+                "Arrival", "Arrival Airport","Flight Duration (minutes)", "Created by (id)",
+                "Ticket Price", "Status"]]
+
+        
+        for f in flights:
+            data.append([
+                f.id if f.id is not None else 0,
+                str(f.flight_name) if f.flight_name else "",
+                str(f.airlines.name)  if f.airlines and f.airlines.name  else "Unknown",
+                f.length_of_flight if f.length_of_flight is not None else 0,
+                str(f.departure_time) if f.departure_time else "",
+                str(f.departure_airport) if f.departure_airport else "",
+                str(f.arrival_time) if f.arrival_time else "",
+                str(f.airport_of_arrival) if f.airport_of_arrival else "",
+                f.flight_duration_minutes if f.flight_duration_minutes is not None else 0,
+                f.created_by_id if f.created_by_id is not None else 0,
+                float(f.ticket_price) if f.ticket_price is not None else 0.0,
+                str(f.status) if f.status else ""
+            ])
+
+        styles = getSampleStyleSheet()
+        normal_style = styles["Normal"]
+
+        # Columns that should wrap
+        wrap_columns = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
+
+        wrapped_data = []
+
+        for row in data:
+            new_row = []
+            for col_index, cell in enumerate(row):
+                cell_str = str(cell)
+
+                if col_index in wrap_columns:
+                    new_row.append(Paragraph(cell_str, normal_style))
+                else:
+                    new_row.append(cell_str)
+
+            wrapped_data.append(new_row)
+
+        
+        col_widths = [
+            1.2*cm,  # ID
+            2*cm,    # Flight name
+            2*cm,    # Airline
+            1.5*cm,  # Length
+            2*cm,    # Departure
+            1.8*cm,  # Departure Airport
+            2*cm,    # Arrival
+            1.8*cm,  # Arrival Airport
+            1.5*cm,  # Duration
+            1.5*cm,  # Created by
+            1.5*cm,  # Price
+            1.5*cm   # Status
+        ]
+        table = Table(wrapped_data,colWidths=col_widths)
+
+        table.setStyle(TableStyle([
+            ("BACKGROUND",(0,0),(-1,0),colors.gray),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ("ALIGN",(0,0),(-1,-1),"CENTER"),
+            ('FONTSIZE', (0, 0), (-1, -1), 6),                 
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ]))
+
+        elements=[table]
+        
+        doc.build(elements)
+
+        buffer.seek(0)
+        pdf_bytes = buffer.read()
+        if not pdf_bytes:
+            return jsonify({"error": "PDF is empty"}), 500
+
+        msg = Message(
+            subject=f"{status.upper()} Flights Report",
+            recipients=[admin_mail],
+            body = f"Attached is the {status} flights report."
+        )
+
+        msg.attach(
+            filename=f"{status}_flghts_report.pdf",
+            content_type="application/pdf",
+            data=pdf_bytes
+        )
+
+        mail.send(msg)
+        print(f"Report for status '{status}' sent to {admin_mail}")
+        return jsonify({"message":"Report sent successfully!"}),200
+
+    except Exception as e:
+        print("Error in /flights/report:", e) 
+        return jsonify({"error": "Internal server error"}), 500
+
+
 def to_datetime(value):
     if value is None:
         return None
@@ -414,19 +710,19 @@ def refresh_flight_states_socket(app):
     with app.app_context():
         now = datetime.now().replace(microsecond=0)
         flights = Flights.query.all()
-        print("NOW: ",now)
+        #("NOW: ",now)
         for flight in flights:
-            print("EMITTING UPDATE", flight.id)
+            #print("EMITTING UPDATE", flight.id)
 
             departure_time = to_datetime(flight.departure_time)
             arrival_time = to_datetime(flight.arrival_time)
-            print("DT: ",departure_time," AT: ",arrival_time)
+            #print("DT: ",departure_time," AT: ",arrival_time)
             old_state = flight.arrival_state
-            print("Before chacking: ",old_state)
+            #print("Before chacking: ",old_state)
 
             if flight.status == "cancelled":
                 flight.arrival_state = "finished"
-                print("Cancelled:  ",flight.arrival_state)
+               # print("Cancelled:  ",flight.arrival_state)
             else:
                 if now < departure_time:
                     flight.arrival_state = "upcoming"
@@ -436,7 +732,7 @@ def refresh_flight_states_socket(app):
                 elif arrival_time is None or now > arrival_time:
                     flight.arrival_state = "finished"
 
-            print("After checking:  ",flight.arrival_state)
+           # print("After checking:  ",flight.arrival_state)
             # emit only if state changed
             if old_state != flight.arrival_state:
                 socketio.emit(
