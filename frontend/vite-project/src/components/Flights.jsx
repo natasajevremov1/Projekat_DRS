@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import Header from "./Header";
-import axios from "axios";
 import CreatableSelect from "react-select/creatable";
+import "../CSS/global.css";   // osnovni stilovi, fontovi
+import "../CSS/auth.css";     // forma i input polja, dugmad, error poruke
+import "../CSS/layout.css";   // main-page, meni, header-form
+import { api,flightsApi } from "../api";
 
 function Flights(){
     const [flight_name,SetFlightsName]=useState("");
@@ -29,7 +32,7 @@ function Flights(){
         setLoading(false);
         return;
         }
-        axios.get(`http://127.0.0.1:5001/companies`, {
+        flightsApi.get(`/companies`, {
             headers: { Authorization: `Bearer ${token}` }
          })
          .then(res =>{
@@ -57,8 +60,8 @@ function Flights(){
             if(selectedAirline.__isNew__){
                 console.log(selectedAirline);
                 console.log(token);
-                const resAirline = await axios.post(
-                    `http://127.0.0.1:5001/companies`,
+                const resAirline = await flightsApi.post(
+                    `/companies`,
                     {name:selectedAirline.label.trim()},
                     {headers: {Authorization: `Bearer ${token}`,
                              'Content-Type': 'application/json'}}
@@ -66,8 +69,8 @@ function Flights(){
 
                 airlineId = resAirline.data.id;
 
-                const updatedAirlines = await axios.get(
-                    `http://127.0.0.1:5001/companies`,
+                const updatedAirlines = await flightsApi.get(
+                    `/companies`,
                     {headers: {Authorization: `Bearer ${token}` }}
                     
                 );
@@ -86,7 +89,7 @@ function Flights(){
                 ticket_price
             });
 
-            const resFlight = await axios.post("http://127.0.0.1:5001/header/flights",{
+            const resFlight = await flightsApi.post("/header/flights",{
                 flight_name,
                 airline_id: airlineId,
                 length_of_flight: parseInt(length_of_flight),
@@ -130,7 +133,7 @@ function Flights(){
 
     return(
        <form onSubmit={handleSubmit}>
-        <div className="header-form">
+        <div>
             <Header></Header>
         </div>
         <div className="register-form">

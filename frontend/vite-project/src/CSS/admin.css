@@ -1,0 +1,153 @@
+/* Admin Users tabela */
+.admin-container {
+    position: relative;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(8px);
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.463);
+    width: 600px;
+    margin: 50px auto;
+    animation: fadeIn 1s ease-in-out;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Naslov tabele */
+.admin-container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #222;
+    font-weight: bold;
+}
+
+.admin-container1 {
+    position:relative;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(8px);
+    padding: 50px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.463);
+    width: 900px;
+    margin: 100px auto;
+    animation: fadeIn 1s ease-in-out;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.admin-container1 h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #222;
+    font-weight: bold;
+    font-style: italic;
+}
+
+/* Akcije (Update + Delete dugmad) */
+.admin-container td button {
+    width: auto;
+    margin-right: 10px;
+}
+
+/* Tabela */
+.admin-container table,
+.admin-container1 table {
+    width: 100%;
+    border-collapse: collapse;
+    font-style: italic;
+    border: 1px solid #000;
+    
+    
+}
+
+
+/* Header */
+.admin-container th,
+.admin-container1 th {
+    background: linear-gradient(135deg, #00c6ff, #0072ff);
+    color: rgb(32, 30, 30);
+    font-weight: bold;
+    padding: 15px;
+    text-align: center;
+    border: 1px solid #000;
+}
+
+/* Rows */
+.admin-container td,
+.admin-container1 td {
+    padding: 10px;
+    border: 1px solid #ccc;
+    text-align: center;
+}
+
+/* Alternating rows */
+.admin-container tr:nth-child(even) {
+    background: rgba(0, 198, 255, 0.1);
+}
+
+/* Hover efekat */
+.admin-container tr:hover {
+    background: rgba(0, 198, 255, 0.2);
+}
+
+
+/* Notification bubble */
+.notification-bubble {
+  background-color: red;
+  color: white;
+  border-radius: 50%;
+  padding: 2px 6px;
+  font-size: 12px;
+  margin-left: 5px;
+}
+
+/* Tooltip */
+.tooltip-cell {
+  position: relative;
+}
+
+.tooltip-cell::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  font-size: 14px;
+  font-weight: bold;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 1000;
+  width: max-content;
+  max-width: 250px;
+}
+
+tr:hover .tooltip-cell::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-10px);
+}
+.input-wrapper {
+  display: flex;
+  flex-direction: column;   /* jedno ispod drugog */
+  gap: 10px;                /* razmak između njih */
+  width: 100%;
+}
+
+.input-wrapper input {
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+
+}
+
+.input-wrapper .react-select__control {
+  width: 100%;
+  min-height: 38px;
+}
+

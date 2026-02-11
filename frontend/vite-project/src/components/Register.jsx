@@ -1,7 +1,11 @@
 import { useState } from "react";
-import axios from "axios";
-import "../CSS/Login.css";
-import { useNavigate } from "react-router-dom";
+
+//import "../CSS/Login.css";
+import "../CSS/global.css";
+import "../CSS/auth.css";
+import { api } from "../api";
+
+import {Link, useNavigate } from "react-router-dom";
 
 function Register(){
     const [username,setUsername]=useState("");
@@ -21,7 +25,7 @@ function Register(){
         e.preventDefault();
 
         if(!username || !password || !name || !lastname || !dateOfBirth || !gender || !country || !street || !streetNumber){
-        setErrorMessage("Sva polja moraju biti popunjena");
+        setErrorMessage("All fileds must be filled.");
         return;
        } else {
         setErrorMessage("");
@@ -29,7 +33,7 @@ function Register(){
         }
 
         
-        axios.post("http://127.0.0.1:5000/register",{
+        api.post("/register",{
             username,
             password,
             name,
@@ -144,6 +148,11 @@ function Register(){
                 </div>
                 </div>
                 <button type="submit">Sign up</button>
+                <div className="register-link">
+                 Have an account?{" "}
+                <Link to="/">Sign in</Link>
+            </div>
+            
                 {errorMessage && <p className="error">{errorMessage}</p>}
             </div>
         </form>

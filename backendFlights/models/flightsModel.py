@@ -23,7 +23,8 @@ class Flights(db.Model):
     rejection_reason = db.Column(db.String(255), nullable=True)  # opcionalno
     
     #columns for flight state 
-    arrival_time = db.Column(db.Integer,nullable=False)
+    arrival_time = db.Column(db.Integer, nullable=True)
+
     arrival_state = db.Column(db.String(20), nullable=False, default="upcoming")
     
     

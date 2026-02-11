@@ -16,7 +16,8 @@ from email.mime.multipart import MIMEMultipart
 
 
 app=Flask(__name__)
-
+# Dozvoljava zahteve sa frontend-a
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
@@ -26,7 +27,7 @@ EMAIL_PASSWORD=os.getenv("EMAIL_PASSWORD")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
 
-CORS(app,supports_credentials=True) #dozvoljaava reactu da pristupi backendu
+
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 
 jwt=JWTManager(app)
@@ -256,7 +257,7 @@ def edit_profile():
             "street": user.street,
             "streetNumber": user.streetNumber,
             "accountBalance": user.accountBalance,
-            #"profileImage": user.profile_image
+            "profileImage": user.profile_image
         }), 200
 
     if request.method == "PUT":
@@ -302,7 +303,7 @@ def edit_profile():
             filename = secure_filename(file.filename)
             filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
             file.save(filepath)
-            user.profile_image = filepath
+            user.profile_image = filename
 
         db.session.commit()
 
@@ -312,11 +313,9 @@ def edit_profile():
 def get_image(filename):
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
- 
-if  __name__ == "__main__":
-    with app.app_context(): #moramo imati context da kreiramo tabele
-        
-        db.create_all() #kreira sve tabele koje su u modelima
-    app.run(debug=True)
+if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()
+    app.run(host="0.0.0.0", port=5000, debug=True)
 
 

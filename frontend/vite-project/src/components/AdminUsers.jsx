@@ -1,8 +1,10 @@
 import { useState,useEffect } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Header from "./Header";
 import EditProfile from "./EditProfile";
+import "../CSS/global.css";  // osnovni stilovi: fontovi, spacing, boje
+import "../CSS/admin.css";   // stilovi za admin stranice: table, buttons, container
+import { api,flightsApi } from "../api";
 
 function AdminUsers(){
     const [users, setUsers]=useState([]);
@@ -14,7 +16,7 @@ function AdminUsers(){
         
    
 
-        axios.get("http://127.0.0.1:5000/admin/users",{
+        api.get("/admin/users",{
              headers:{
                Authorization: `Bearer ${token}`
             }
@@ -39,7 +41,7 @@ function AdminUsers(){
     };
     const updateRole=(id,role)=>{
         setLoading(true);
-        axios.put(`http://127.0.0.1:5000/admin/users/${id}`,{role},
+        api.put(`/admin/users/${id}`,{role},
             {headers:{Authorization: `Bearer ${token}`}
         })
         .then(res=>{
@@ -55,7 +57,7 @@ function AdminUsers(){
 
     setLoading(true);
 
-    axios.delete(`http://127.0.0.1:5000/admin/users/${id}`, {
+    api.delete(`/admin/users/${id}`, {
         headers: {
             Authorization: `Bearer ${token}`
         }
@@ -82,7 +84,7 @@ return (
           <h2>Users List</h2>
           {error && <p className="error">{error}</p>}
 
-          <table border="1">
+          <table>
             <thead>
               <tr>
                 <th>ID</th>

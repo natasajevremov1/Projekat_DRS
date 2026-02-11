@@ -1,0 +1,75 @@
+services:
+  frontend:
+    image: avio-frontend
+    build:
+      context: ./frontend/vite-project
+    ports:
+      - "3000:80"
+    depends_on:
+      - users
+      - flights
+    restart: unless-stopped
+
+  users:
+    image: avio-users
+    build:
+      context: ./backend
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env.docker
+    depends_on:
+      users-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  flights:
+    image: avio-flights
+    build:
+      context: ./backendFlights
+    ports:
+      - "5001:5001"
+    env_file:
+      - ./backendFlights/.env.docker
+    depends_on:
+      flights-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  users-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: users
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: example
+    ports:
+      - "5435:5432"
+    volumes:
+      - users-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  flights-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: flights
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: example
+    ports:
+      - "5434:5432"
+    volumes:
+      - flights-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  users-data:
+  flights-data:
