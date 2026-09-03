@@ -1,0 +1,94 @@
+/* Glavni layout stranice */
+.main-page {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Meni (header) */
+.meni,
+.header-form {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    background-color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    box-sizing: border-box;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Leva strana menija */
+.meni-left {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+/* Desna strana menija */
+.meni-right {
+    display: flex;
+    align-items: center;
+}
+
+/* Sadržaj ispod headera */
+.content,
+.content1 {
+    padding-top: 80px;
+    min-height: calc(100vh - 60px);
+}
+.meni {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    background: linear-gradient(135deg, #00c6ff, #0072ff);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 30px;
+    box-sizing: border-box;
+    z-index: 1000;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+.meni-left a {
+    color: white;
+    text-decoration: none;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 8px;
+    transition: background 0.3s, transform 0.2s;
+}
+.meni {
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.header-form {
+    box-shadow: none;
+}
+
+.meni-left a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+.logout-button {
+    background: white;
+    color: #0072ff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s, color 0.3s;
+}
+
+.logout-button:hover {
+    background: #0072ff;
+    color: white;
+}

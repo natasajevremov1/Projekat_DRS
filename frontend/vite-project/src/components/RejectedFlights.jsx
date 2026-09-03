@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
+
 import Header from "./Header";
+import '../CSS/admin.css';
+import '../CSS/layout.css';
+import '../CSS/global.css'; // opcionalno, ako želiš tooltip i fadeIn animacije
+import {api, flightsApi } from "../api";
 
 function RejectedFlights() {
   const [flights, setFlights] = useState([]);
@@ -16,7 +20,7 @@ function RejectedFlights() {
       return;
     }
 
-    axios.get("http://127.0.0.1:5001/flights/rejected", {
+    flightsApi.get("/flights/rejected", {
       headers: { Authorization: `Bearer ${token}` },
     })
     .then(res => {

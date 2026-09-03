@@ -1,45 +1,41 @@
 import { useState, useEffect } from "react";
 import Header from "./Header";
-import axios from "axios";
 import io from "socket.io-client";
 import Countdown from "react-countdown";
-import Select from "react-select/creatable";
+import Select from "react-select/creatable"; // ili "react-select"
+import "../CSS/admin.css";
+import { api, flightsApi } from "../api";
 import { Link } from "react-router-dom";
+
 
 function FlightsOverview() {
   const [flights, setFlights] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const [activeTab,setActiveTab] = useState("upcoming");
+  const [activeTab, setActiveTab] = useState("upcoming");
   const [search, setSearch] = useState("");
+  const [selectedAirline, setSelectedAirline] = useState(null);
+  const [airlines, setAirlines] = useState([]);
+  const [boughtFlights, setBoughtFlights] = useState([]);
 
-  const [selectedAirline,setSelectedAirline]=useState(null);
-  const [airlines,setAirlines] = useState([]);
 
   const role = localStorage.getItem("role");
 
   useEffect(() => {
     setLoading(true);
     const token = localStorage.getItem("token");
-    const role=localStorage.getItem("role");
     if (!token) {
       setError("No token found. Please login.");
       setLoading(false);
       return;
     }
 
-      const url = role === "ADMIN"
-    ? "http://127.0.0.1:5001/header/overview"
-    : "http://127.0.0.1:5001/flights/approved"; // korisnici i menadžeri
-    // POSTOJEĆA RUTA → za sada koristimo overview, kasnije možeš dodati user-flights
-    axios.get(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    const url = role === "ADMIN" ? "/header/overview" : "/flights/approved";
+
+    flightsApi.get(url, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
-        // Ako korisnik nije ADMIN, filtriraj samo APPROVED letove
         if (role === "USER" || role === "MANAGER") {
-          setFlights(res.data.filter(f => f.status === "approved" ||  f.status === "cancelled"));
+          setFlights(res.data.filter(f => f.status === "approved" || f.status === "cancelled"));
         } else {
           setFlights(res.data);
         }
@@ -53,82 +49,56 @@ function FlightsOverview() {
       })
       .finally(() => setLoading(false));
 
-      axios.get("http://127.0.0.1:5001/companies",
-            {headers: {Authorization: `Bearer ${token}`}}
-        )
-        .then(res=>{
-            const options = res.data.map((a)=> ({value:a.id,label:a.name}));
-            setAirlines(options);
-        })
-        .catch(err=>console.log(err));
+    flightsApi.get("/companies", { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => {
+        const options = res.data.map(a => ({ value: a.id, label: a.name }));
+        setAirlines(options);
+      })
+      .catch(err => console.log(err));
 
-    const socket = io("http://127.0.0.1:5001",
-       {  transports: ["polling","websocket"] }
-    );
+    const socket = io(flightsApi.defaults.baseURL, { transports: ["polling", "websocket"] });
 
-    // Real-time dodavanje novih letova
-    socket.on("new-flight", (newFlight) => {
-      if (role === "ADMIN") {
-        setFlights(prev => [newFlight, ...prev]);
-      } else if (newFlight.status === "approved") {
-        setFlights(prev => [newFlight, ...prev]);
-      }
+    socket.on("new-flight", newFlight => {
+      if (role === "ADMIN") setFlights(prev => [newFlight, ...prev]);
+      else if (newFlight.status === "approved") setFlights(prev => [newFlight, ...prev]);
     });
 
-    socket.on("flight-rejected", (flightInfo) => {
+    socket.on("flight-rejected", flightInfo => {
       alert(`Flight "${flightInfo.flight_name}" was rejected.\nReason: ${flightInfo.reason}`);
       setFlights(prev => prev.filter(f => f.id !== flightInfo.id));
     });
 
-    socket.on("flight-approved", (flightInfo) => {
-      setFlights(prev =>
-        prev.map(f =>
-          f.id === flightInfo.id ? { ...f, status: "approved" } : f
-        )
-      );
+    socket.on("flight-approved", flightInfo => {
+      setFlights(prev => prev.map(f => f.id === flightInfo.id ? { ...f, status: "approved" } : f));
     });
 
-    socket.on("flight-cancelled", (flightInfo) => {
-      setFlights(prev =>
-        prev.map(f =>
-          f.id === flightInfo.id ? { ...f, status: "cancelled" } : f
-        )
-      );
+    socket.on("flight-cancelled", flightInfo => {
+      setFlights(prev => prev.map(f => f.id === flightInfo.id ? { ...f, status: "cancelled" } : f));
     });
 
-    socket.on("flight_update", (updatedFlight) => {
-        console.log("updating",updatedFlight)
-        setFlights(prevFlights => {
-            const index = prevFlights.findIndex(f => f.id === updatedFlight.id);
-
-            if(index !== -1){
-                const newFlights = [...prevFlights];
-                newFlights[index]={...newFlights[index],...updatedFlight};
-                return newFlights;
-            }else{
-                return[...prevFlights,updatedFlight];
-            }
-        });
+    socket.on("flight_update", updatedFlight => {
+      setFlights(prev => {
+        const index = prev.findIndex(f => f.id === updatedFlight.id);
+        if (index !== -1) {
+          const newFlights = [...prev];
+          newFlights[index] = { ...newFlights[index], ...updatedFlight };
+          return newFlights;
+        } else {
+          return [...prev, updatedFlight];
+        }
+      });
     });
 
     return () => socket.disconnect();
   }, [role]);
 
-  const handleAccept = async (id) => {
+  
+  const handleAccept = async id => {
     const token = localStorage.getItem("token");
     setLoading(true);
     try {
-      await axios.post(
-        `http://127.0.0.1:5001/header/accept/${id}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      setFlights(prev =>
-        prev.map(f =>
-          f.id === id ? { ...f, status: "approved" } : f
-        )
-      );
+      await flightsApi.post(`/header/accept/${id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      setFlights(prev => prev.map(f => f.id === id ? { ...f, status: "approved" } : f));
     } catch {
       alert("Error approving flight");
     } finally {
@@ -136,20 +106,14 @@ function FlightsOverview() {
     }
   };
 
-  const handleReject = async (id) => {
+  const handleReject = async id => {
     const reason = prompt("Enter rejection reason:");
     if (!reason) return;
 
     const token = localStorage.getItem("token");
     setLoading(true);
-
     try {
-      await axios.post(
-        `http://127.0.0.1:5001/header/reject/${id}`,
-        { reason },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
+      await flightsApi.post(`/header/reject/${id}`, { reason }, { headers: { Authorization: `Bearer ${token}` } });
       setFlights(prev => prev.filter(f => f.id !== id));
     } catch {
       alert("Error rejecting flight");
@@ -158,22 +122,12 @@ function FlightsOverview() {
     }
   };
 
-  
-  const handleCancel = async (id)=>{
+  const handleCancel = async id => {
     const token = localStorage.getItem("token");
     setLoading(true);
     try {
-      await axios.post(
-        `http://127.0.0.1:5001/header/cancel/${id}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      setFlights(prev =>
-        prev.map(f =>
-          f.id === id ? { ...f, status: "cancelled" } : f
-        )
-      );
+      await flightsApi.post(`/header/cancel/${id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      setFlights(prev => prev.map(f => f.id === id ? { ...f, status: "cancelled" } : f));
     } catch {
       alert("Error cancelling flight");
     } finally {
@@ -181,157 +135,139 @@ function FlightsOverview() {
     }
   };
 
+  const handleDelete = async id => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this flight?");
+    if (!confirmDelete) return;
 
-  const handleBoughtTicket = async (id) => {
     const token = localStorage.getItem("token");
     setLoading(true);
     try {
-      await axios.post(
-        `http://127.0.0.1:5001/header/bought/${id}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await flightsApi.delete(`/header/delete/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      setFlights(prev => prev.filter(f => f.id !== id));
+    } catch {
+      alert("Error deleting flight");
+    } finally {
+      setLoading(false);
     }
-      catch {
-        alert("Error purchasing ticket");
-      } finally {
-        setLoading(false);
-      }
+  };
+
+  const handleBoughtTicket = async id => {
+    const token = localStorage.getItem("token");
+    setLoading(true);
+    try {
+      await flightsApi.post(`/header/bought/${id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      alert("Succesfully bought ticket!");
+      setBoughtFlights(prev => [...prev, id]);
+    } catch {
+      alert("Error purchasing ticket");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendReport = async activeTab => {
+    const token = localStorage.getItem("token");
+    try {
+      await flightsApi.post("/flights/report", { status: activeTab }, { headers: { Authorization: `Bearer ${token}` } });
+      alert("Report sent successfully!");
+    } catch (error) {
+      console.error("Error sending report!", error);
+    }
+  };
+
+  function FlightCountdown({ arrival_time }) {
+    const render = ({ hours, minutes, seconds, completed }) => {
+      if (completed) return <span>Arrived</span>;
+      return (
+        <span>
+          {hours.toString().padStart(2, "0")}:
+          {minutes.toString().padStart(2, "0")}:
+          {seconds.toString().padStart(2, "0")}
+        </span>
+      );
     };
+    return <Countdown date={new Date(arrival_time)} renderer={render} />;
+  }
 
-    
-  const sendReport = async (activeTab)=>{
-      const token = localStorage.getItem("token");
-          try{
-              await axios.post("http://127.0.0.1:5001/flights/report",
-                  {status:activeTab},
-                  { headers: { "Content-Type": "application/json",
-                                Authorization: `Bearer ${token}`
-                    }/*, withCredentials: true */}
-              );
-              alert("Report sent successfully!");
-          }catch(error){
-              console.error("Error sending report!",error);
-          }
-  };
-
-  
-  function FlightCountdown({arrival_time}){
-      const render = ({hours,minutes,seconds,completed})=>{
-          if(completed){
-              return<span>Arrived</span>
-          }else{
-              return(
-                  <span>
-                      {hours.toString().padStart(2,"0")}:
-                      {minutes.toString().padStart(2,"0")}:
-                      {seconds.toString().padStart(2,"0")}
-                  </span>
-              );
-          }
-      };
-      return <Countdown date={new Date(arrival_time)} renderer={render}/>  
-  };
-
-  const filteredFlights = flights.filter(flight =>{
-      const matchesName = flight.flight_name
-          .toLowerCase()
-          .includes(search.toLowerCase());
-            
-      const matchesAirline = !selectedAirline || flight.airline_id === selectedAirline.value;
-      return matchesName && matchesAirline;
+  const filteredFlights = flights.filter(flight => {
+    const matchesName = flight.flight_name.toLowerCase().includes(search.toLowerCase());
+    const matchesAirline = !selectedAirline || flight.airline_id === selectedAirline.value;
+    return matchesName && matchesAirline;
   });
 
-  const visibleFlights = filteredFlights.filter(
-      flight=>flight.arrival_state === activeTab
-  );
+  const visibleFlights = filteredFlights.filter(flight => flight.arrival_state === activeTab);
 
   const customStyles = {
-    control: (provided) => ({
-        ...provided,
-        backgroundColor: "white", // background of the input
-        color: "black",           // text color
-    }),
-    singleValue: (provided) => ({
-        ...provided,
-        color: "black",           // selected value text color
-    }),
-    menu: (provided) => ({
-        ...provided,
-        backgroundColor: "white", // dropdown menu background
-    }),
+    control: provided => ({ ...provided, backgroundColor: "white", color: "black" }),
+    singleValue: provided => ({ ...provided, color: "black" }),
+    menu: provided => ({ ...provided, backgroundColor: "white" }),
     option: (provided, state) => ({
-        ...provided,
-        color: "black",           // text color of options
-        backgroundColor: state.isFocused ? "#eee" : "white", // hover/focus
+      ...provided,
+      color: "black",
+      backgroundColor: state.isFocused ? "#eee" : "white",
     }),
   };
 
+
   return (
-    <div className="main-page">
-      <Header />
+  <div className="main-page">
+    <Header />
+    <div className="content1">
+      <div className="admin-container1">
+        <h2>Flights Overview</h2>
+        {error && <p className="error">{error}</p>}
 
-      <div className="content1">
-        <div className="admin-container1">
-          <h2>Flights Overview</h2>
-          {error && <p className="error">{error}</p>}
-          <div className ="register-group">
-              <input
-                  type="text"
-                  placeholder="Search flights"
-                  value={search}
-                  onChange={(e)=>setSearch(e.target.value)}
-              />
+        <div className="input-wrapper">
+          <input
+            type="text"
+            placeholder="Search flights"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          <Select
+            styles={customStyles}
+            isClearable
+            placeholder="Select airline"
+            value={selectedAirline}
+            onChange={setSelectedAirline}
+            options={airlines}
+          />
+        </div>
 
-              
-              <Select
-                  styles = {customStyles}
-                  isClearable
-                  placeholder = "Select airline"
-                  vlaue = {selectedAirline}
-                  onChange={setSelectedAirline}
-                  options={airlines}
-                  
-              />
-          </div>
-          <div className="tabs">
-              <button onClick={() => setActiveTab("upcoming")} >
-                  Upcoming 
-              </button>
-              <button onClick={() => setActiveTab("in_progress")} >
-                  In Progress
-              </button>
-              <button onClick={() => setActiveTab("finished")} >
-                  Finished
-              </button>
-          </div>
-          <table border="1">
-            <thead>
+        <div className="tabs">
+          <button onClick={() => setActiveTab("upcoming")}>Upcoming</button>
+          <button onClick={() => setActiveTab("in_progress")}>In Progress</button>
+          <button onClick={() => setActiveTab("finished")}>Finished</button>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Flight Name</th>
+              <th>Airline</th>
+              <th>Length (km)</th>
+              <th>Duration (min)</th>
+              <th>Departure</th>
+              <th>From</th>
+              <th>To</th>
+              {role === "ADMIN" && <th>Created By</th>}
+              <th>Ticket Price</th>
+              {activeTab === "in_progress" && <th>Timer</th>}
+              <th>Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {visibleFlights.length === 0 ? (
               <tr>
-                <th>ID</th>
-                <th>Flight Name</th>
-                <th>Airline</th>
-                <th>Length (km)</th>
-                <th>Duration (min)</th>
-                <th>Departure</th>
-                <th>From</th>
-                <th>To</th>
-                {role === "ADMIN" && <th>Created By</th>}
-                <th>Ticket Price</th>
-                {activeTab==="in_progress" && <th>Timer</th>}
-                {role === "ADMIN" && <th>Action</th>}
+                <td colSpan={role === "ADMIN" ? 11 : 9} style={{ textAlign: "center" }}>
+                  No flights found.
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {visibleFlights.length === 0 ? (
-                <tr>
-                    <td colSpan={8} style={{textAlign: "center"}}>
-                        No flights found.
-                    </td>
-                </tr>
-              ) : (
-               visibleFlights.map((f) => (
-                <tr key={f.id}>
+            ) : (
+              visibleFlights.map(f => (
+                <tr key={f.id} style={{ backgroundColor: f.status === "cancelled" ? "rgba(255,0,0,0.2)" : undefined }}>
                   <td>{f.id}</td>
                   <td>{f.flight_name}</td>
                   <td>{f.airline_name || "Unknown"}</td>
@@ -342,28 +278,28 @@ function FlightsOverview() {
                   <td>{f.airport_of_arrival}</td>
                   {role === "ADMIN" && <td>{f.created_by_id}</td>}
                   <td>{f.ticket_price.toFixed(2)}</td>
-                  {f.arrival_state === "in_progress" && <td> <FlightCountdown arrival_time={f.arrival_time}/></td>}
+                  {f.arrival_state === "in_progress" && <td><FlightCountdown arrival_time={f.arrival_time} /></td>}
+
+                  {/* Actions based on role */}
                   <td>
+                    {/* ADMIN Actions */}
                     {role === "ADMIN" && (
                       <>
                         {f.status === "pending" && (
                           <>
-                            <button onClick={() => handleAccept(f.id)} disabled={loading}>
-                              Accept
-                            </button>
-                            <button onClick={() => handleReject(f.id)} disabled={loading}>
-                              Reject
-                            </button>
+                            <button onClick={() => handleAccept(f.id)} disabled={loading}>Accept</button>
+                            <button onClick={() => handleReject(f.id)} disabled={loading}>Reject</button>
                           </>
                         )}
 
-                        {f.status === "approved" && <span>✔ Approved </span>}
-                        {f.status === "approved" && 
-                         f.arrival_state === "upcoming" && (
+                        {f.status === "approved" && (
                           <>
-                            <button onClick={() => handleCancel(f.id)} disabled={loading}>
-                              Cancel
-                            </button>
+                            {(f.arrival_state === "upcoming" || f.arrival_state === "finished") && (
+                              <button onClick={() => handleDelete(f.id)} disabled={loading} style={{ marginLeft: "5px", backgroundColor: "red", color: "white" }}>Delete</button>
+                            )}
+                            {f.arrival_state === "upcoming" && (
+                              <button onClick={() => handleCancel(f.id)} disabled={loading} style={{ marginLeft: "5px" }}>Cancel</button>
+                            )}
                           </>
                         )}
 
@@ -372,45 +308,34 @@ function FlightsOverview() {
                       </>
                     )}
 
-                    {role === "USER" && (
-                      <>
-                        {f.status === "approved" &&
-                          f.arrival_state === "upcoming" && (
-                            <button onClick={() => handleBoughtTicket(f.id)} disabled={loading}>
-                              Buy
-                            </button>
-                        )}
-                      </>
-                    )}
-
-                    {role === "MANAGER" && (
-                      <>
-                        {f.status === "rejected" && (
-                          <Link to={`/header/edit-flight/${f.id}`}>
-                            Edit after rejection
-                          </Link>
-                        )}
-                      </>
+                    {/* USER Actions */}
+{role === "USER" && f.status === "approved" && f.arrival_state === "upcoming" && !boughtFlights.includes(f.id) && (
+  <button onClick={() => handleBoughtTicket(f.id)} disabled={loading}>Buy</button>
+)}
+{role === "USER" && boughtFlights.includes(f.id) && (
+  <span>✅ Ticket bought</span>
+)}
+                    {/* MANAGER Actions */}
+                    {role === "MANAGER" && f.status === "rejected" && (
+                      <Link to={`/header/edit-flight/${f.id}`}>Edit after rejection</Link>
                     )}
                   </td>
                 </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-          <div></div>
-          <div>
-            { role === "ADMIN" && (
-              <button onClick={()=>sendReport(activeTab)}>
-                  Make and send the flights report
-              </button>
+              ))
             )}
+          </tbody>
+        </table>
+
+        {/* ADMIN report button */}
+        {role === "ADMIN" && (
+          <div style={{ marginTop: "15px" }}>
+            <button onClick={() => sendReport(activeTab)}>Make and send the flights report</button>
           </div>
-        </div>
-        
+        )}
       </div>
     </div>
-  );
+  </div>
+);
 }
 
 export default FlightsOverview;

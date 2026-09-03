@@ -1,8 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+
 import Header from "./Header";
 import CreatableSelect from "react-select/creatable";
+// import CSS za ceo layout i forme
+import "../CSS/global.css";   // osnovni globalni stilovi (boje, fontovi, spacing)
+import "../CSS/admin.css";    // stilovi za admin stranice i forme (tablice, grid, buttons)
+import { api,flightsApi } from "../api";
 
 function EditFlight() {
   const { id } = useParams(); // id leta iz URL-a
@@ -27,7 +31,7 @@ function EditFlight() {
 
   useEffect(() => {
 
-    axios.get(`http://127.0.0.1:5001/flights/${id}`, {
+    flightsApi.get(`/flights/${id}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then(res => {
@@ -52,7 +56,7 @@ function EditFlight() {
   }, [id]);
 
   useEffect(()=>{
-    axios.get(`http://127.0.0.1:5001/companies`, {
+    flightsApi.get(`/companies`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       .then(res =>{
@@ -81,8 +85,8 @@ function EditFlight() {
 
       if(selectedAirline.__isNew__){
 
-          const resAirline = await axios.post(
-              `http://127.0.0.1:5001/companies`,
+          const resAirline = await flightsApi.post(
+              `/companies`,
               {name:selectedAirline.label.trim()},
               {headers: {Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json'}}
@@ -90,8 +94,8 @@ function EditFlight() {
 
           airlineId = resAirline.data.id;
 
-          const updatedAirlines = await axios.get(
-              `http://127.0.0.1:5001/companies`,
+          const updatedAirlines = await flightsApi.get(
+              `/companies`,
               {headers: { Authorization: `Bearer ${token}`}}
           );
           
@@ -101,7 +105,7 @@ function EditFlight() {
         airlineId = selectedAirline.value;
       }
 
-      await axios.put(`http://127.0.0.1:5001/flights/${id}`, 
+      await flightsApi.put(`/flights/${id}`, 
         {...formData, airline_id: airlineId}, 
         {headers: { Authorization: `Bearer ${token}` }
       });

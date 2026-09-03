@@ -3,6 +3,9 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 import os
 from flask_jwt_extended import JWTManager
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 from models.flightsModel import db,Flights
 from models.airlineModel import Airlines
@@ -29,13 +32,14 @@ from reportlab.lib.units import cm
 from io import BytesIO
 
 load_dotenv()
+
 flights_bp = Blueprint("flights",__name__)
 socketio=SocketIO(cors_allowed_origins="*",async_mode="eventlet")
 mail = Mail()
 
 def create_app():
     flights=Flask(__name__)
-    CORS(flights,supports_credentials=True) #dozvoljava reactu da pristupi backendu
+    CORS(flights,supports_credentials=True, resources={r"/*": {"origins": "*"}},  methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]) #dozvoljava reactu da pristupi backendu
 
     flights.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
     
@@ -64,6 +68,7 @@ def create_app():
 def home():
     return "Backend flights is working"
     
+            
 @flights_bp.route("/header/flights",methods=["POST"])
 @jwt_required() 
 def newFlight():
@@ -124,7 +129,7 @@ def newFlight():
         "airport_of_arrival": new_flight.airport_of_arrival,
         "created_by_id": new_flight.created_by_id,
         "ticket_price": float(new_flight.ticket_price),
-        "arrival_time": new_flight.arrival_time.strftime("%Y-%m-%d %H:%M"),
+        "arrival_time": new_flight.arrival_time.strftime("%Y-%m-%d %H:%M") if new_flight.arrival_time else None,
     })
 
     
@@ -158,7 +163,7 @@ def get_flights():
             "status": f.status,
             "rejection_reason": f.rejection_reason,
             "arrival_state": f.arrival_state,
-            "arrival_time":f.arrival_time.strftime("%Y-%m-%d %H:%M")
+            "arrival_time":f.arrival_time.strftime("%Y-%m-%d %H:%M") if f.arrival_time else None
 
             
             # kasnije možeš dodati "status": f.status
@@ -192,6 +197,7 @@ def accept_flight(flight_id):
 
 @flights_bp.route("/header/cancel/<int:flight_id>", methods=["POST"])
 @jwt_required()
+
 def cancel_flight(flight_id):
     claims = get_jwt()
     if claims["role"] != "ADMIN":
@@ -214,6 +220,7 @@ def cancel_flight(flight_id):
         "id": flight.id,
         "flight_name": flight.flight_name,
     })
+      
 
     return jsonify({"message": "Flight cancelled!"})
 
@@ -274,7 +281,7 @@ def get_approved_flights():
             "ticket_price": float(f.ticket_price),
             "status": f.status,
             "arrival_state": f.arrival_state,
-            "arrival_time":f.arrival_time.strftime("%Y-%m-%d %H:%M")
+            "arrival_time":f.arrival_time.strftime("%Y-%m-%d %H:%M") if f.arrival_time else None
         })
     return jsonify(flights_list)
 
@@ -726,11 +733,11 @@ def refresh_flight_states_socket(app):
             else:
                 if now < departure_time:
                     flight.arrival_state = "upcoming"
-                elif departure_time <= now <= arrival_time:
+                # dodaj proveru da arrival_time nije None
+                elif arrival_time is not None and departure_time <= now <= arrival_time:
                     flight.arrival_state = "in_progress"
-                elif now > arrival_time:
+                elif arrival_time is None or now > arrival_time:
                     flight.arrival_state = "finished"
-            
 
            # print("After checking:  ",flight.arrival_state)
             # emit only if state changed
@@ -746,25 +753,54 @@ def refresh_flight_states_socket(app):
 
         db.session.commit()
 
+@flights_bp.route("/header/delete/<int:flight_id>", methods=["DELETE","OPTIONS"])
+def delete_flight(flight_id):
+    if request.method == "OPTIONS":
+        return '', 200  # preflight OK
+
+    # sada JWT samo za DELETE
+    from flask_jwt_extended import verify_jwt_in_request
+    verify_jwt_in_request()
+
+    claims = get_jwt()
+    if claims["role"] != "ADMIN":
+        return jsonify({"message": "You don't have permission."}), 403
+
+    flight = Flights.query.filter(Flights.id == flight_id).first()
+    if not flight:
+        return jsonify({"message": "Flight not found"}), 404
+
+    try:
+        db.session.delete(flight)
+        db.session.commit()
+
+        socketio.emit("flight-deleted", {
+            "id": flight_id,
+            "flight_name": flight.flight_name
+        })
+
+        return jsonify({"message": "Flight deleted successfully"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Error deleting flight", "error": str(e)}), 500
+
 def flight_watcher_thread(app):
     while True:
         refresh_flight_states_socket(app)
         time.sleep(10)
 
     
-if __name__ == "__main__" :
+if __name__ == "__main__":
 
-    flights=create_app()
+    flights = create_app()
 
     with flights.app_context():
-    
         db.create_all()
 
-    listener_thread = Thread(target=flight_watcher_thread,args=(flights,), daemon=True)
+    listener_thread = Thread(target=flight_watcher_thread, args=(flights,), daemon=True)
     listener_thread.start()
 
-
-    socketio.run(flights,port=5001,debug=True,use_reloader=False) #drugi port da se ne sudari s drugim backendom
+    socketio.run(flights, host="0.0.0.0", port=5001, debug=True, use_reloader=False)
     
        
 
