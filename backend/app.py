@@ -14,6 +14,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import time
+from multiprocessing import Process;
 
 app=Flask(__name__)
 # Dozvoljava zahteve sa frontend-a
@@ -57,11 +58,9 @@ def send_role_change_email(to_email, new_role):
         to_email: string, mejl primaoca
         new_role: string, nova uloga ("MANAGER" ili "USER")
     """
-    # 1️⃣ Tekst mejla
     subject = "Promena uloge na AvioPlatformi"
     body = f"Poštovani,\n\nVaša uloga na platformi je promenjena.\nNova uloga: {new_role}\n\nPozdrav,\nAvioPlatform Tim"
 
-    # 2️⃣ Kreiranje mejla
     msg = MIMEMultipart()
     msg['From'] = EMAIL_ADDRESS         # tvoj Gmail iz .env
     msg['To'] = to_email
@@ -69,7 +68,6 @@ def send_role_change_email(to_email, new_role):
     msg.attach(MIMEText(body, 'plain'))
 
     try:
-        # 3️⃣ Povezivanje sa Gmail SMTP serverom
         server = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
         server.starttls()               # aktivira TLS enkripciju
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)  # prijava koristeći App Password
@@ -239,8 +237,8 @@ def update_user_role(user_id):
     user.role = new_role
     db.session.commit()
     
-    send_role_change_email(user.username,new_role)
-
+    p = Process(target=send_role_change_email, args=(user.username, new_role))
+    p.start()
     return jsonify({"message": f"User role updated to {new_role}"}), 200
     
 @app.route("/admin/users/<int:user_id>",methods=["DELETE"])

@@ -20,9 +20,7 @@ class TicketPurchase(db.Model):
 
     # relacija ka letu
     flight = db.relationship("Flights", lazy="joined")
-    # ovo povezuje TicketPurchase sa User tabelom
-    user = db.relationship("User", backref="ticket_purchases")
-
+   
     __table_args__ = (
         # Jedan korisnik moze kupiti istu kartu samo jednom (po letu)
         db.UniqueConstraint("user_id", "flight_id", name="uq_user_flight_purchase"),

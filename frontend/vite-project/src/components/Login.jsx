@@ -60,7 +60,7 @@ function Login() {
           if (err.response.status === 403) {
             setErrorMessage("Account is temporarily blocked. Try again later.");
             setBlocked(true);
-            setRemainingTime(err.response.data.remaining_seconds);
+            setRemainingTime(err.response.data.seconds_left);
           } else if (err.response.status === 401) {
             setErrorMessage("Wrong email or password.");
           } else {
@@ -98,7 +98,7 @@ function Login() {
           />
         </div>
 
-        <button type="submit" disabled={blocked}>
+        <button type="submit" >
           Sign in
         </button>
         {loading && <div className="spinner"></div>}

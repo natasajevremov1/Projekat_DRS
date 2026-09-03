@@ -19,6 +19,7 @@ function Header() {
 
     // Dohvatanje slike korisnika
     api
+
       .get("/profile", {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -29,7 +30,7 @@ function Header() {
 
     // Ako je MANAGER, dohvatiti odbijene letove
     if (role === "MANAGER") {
-      api
+      flightsApi
         .get("/flights/rejected", {
           headers: { Authorization: `Bearer ${token}` },
         })
