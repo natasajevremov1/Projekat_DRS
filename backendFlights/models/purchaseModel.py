@@ -1,4 +1,5 @@
 from datetime import datetime
+from .userModel import Users   # import iz istog servisa
 
 from .flightsModel import db
 
@@ -9,7 +10,7 @@ class TicketPurchase(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    user_id = db.Column(db.Integer, nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     flight_id = db.Column(db.Integer, db.ForeignKey("flights.id"), nullable=False, index=True)
 
     purchased_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -21,7 +22,7 @@ class TicketPurchase(db.Model):
     # relacija ka letu
     flight = db.relationship("Flights", lazy="joined")
     # ovo povezuje TicketPurchase sa User tabelom
-    user = db.relationship("User", backref="ticket_purchases")
+    user = db.relationship("Users", backref="ticket_purchases")
 
     __table_args__ = (
         # Jedan korisnik moze kupiti istu kartu samo jednom (po letu)
