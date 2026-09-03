@@ -4,6 +4,7 @@ import axios from "axios";
 import io from "socket.io-client";
 import Countdown from "react-countdown";
 import Select from "react-select/creatable";
+import { Link } from "react-router-dom";
 
 function FlightsOverview() {
   const [flights, setFlights] = useState([]);
@@ -180,6 +181,40 @@ function FlightsOverview() {
     }
   };
 
+
+  const handleBoughtTicket = async (id) => {
+    const token = localStorage.getItem("token");
+    setLoading(true);
+    try {
+      await axios.post(
+        `http://127.0.0.1:5001/header/bought/${id}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    }
+      catch {
+        alert("Error purchasing ticket");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    
+  const sendReport = async (activeTab)=>{
+      const token = localStorage.getItem("token");
+          try{
+              await axios.post("http://127.0.0.1:5001/flights/report",
+                  {status:activeTab},
+                  { headers: { "Content-Type": "application/json",
+                                Authorization: `Bearer ${token}`
+                    }/*, withCredentials: true */}
+              );
+              alert("Report sent successfully!");
+          }catch(error){
+              console.error("Error sending report!",error);
+          }
+  };
+
   
   function FlightCountdown({arrival_time}){
       const render = ({hours,minutes,seconds,completed})=>{
@@ -337,25 +372,42 @@ function FlightsOverview() {
                       </>
                     )}
 
-                    {(role === "USER" || role === "MANAGER")  && (
-                        <>
-                        {f.status === "rejected"  && (
-                            <Link to={`/header/edit-flight/${f.id}`}>
-                                Edit after rejection
-                            </Link>
+                    {role === "USER" && (
+                      <>
+                        {f.status === "approved" &&
+                          f.arrival_state === "upcoming" && (
+                            <button onClick={() => handleBoughtTicket(f.id)} disabled={loading}>
+                              Buy
+                            </button>
                         )}
-                         
-                        </>
-                    )
-                    }
+                      </>
+                    )}
+
+                    {role === "MANAGER" && (
+                      <>
+                        {f.status === "rejected" && (
+                          <Link to={`/header/edit-flight/${f.id}`}>
+                            Edit after rejection
+                          </Link>
+                        )}
+                      </>
+                    )}
                   </td>
                 </tr>
                 ))
               )}
             </tbody>
           </table>
-
+          <div></div>
+          <div>
+            { role === "ADMIN" && (
+              <button onClick={()=>sendReport(activeTab)}>
+                  Make and send the flights report
+              </button>
+            )}
+          </div>
         </div>
+        
       </div>
     </div>
   );

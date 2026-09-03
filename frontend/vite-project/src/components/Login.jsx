@@ -55,7 +55,7 @@ function Login(){
             if(err.response.status===403){
                 setErrorMessage("Nalog je privremeno blokiran.Porusajte kasnije");
                 setBlocked(true);
-                setRemainingTime(err.response.data.remaining_seconds);
+                setRemainingTime(Number(err.response.data.seconds_left));
             }else if(err.response.status===401){
                 setErrorMessage("Pogresan email ili lozinka");
             }else{
@@ -92,7 +92,7 @@ function Login(){
                 onChange={(e)=>setPassword(e.target.value)}
                 ></input>
             </div>
-            <button type="submit" disabled={blocked}>Sign in</button>
+            <button type="submit" >Sign in</button>
             {loading && <div className="spinner"></div>}
 
             <div className="register-link">
