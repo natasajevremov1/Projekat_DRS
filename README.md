@@ -58,5 +58,19 @@ This project is a web application that simulates a flight booking and management
 
 # Purpose
  This project was developed to practice building a distributed system with real-time communication and modern web technologies.
+ 
+## Screenshotovi
+
+### Login forma
+![Login](screenshots/Login.png)
+
+### Dashboard (Admin/Manager)
+![Dashboard](screenshots/Dashboard.png)
+
+### Booking proces
+![Booking](screenshots/BookingTicket.png)
+
+### Ocenjivanje leta
+![Rating](screenshots/Rating.png)
 
 Natasa Jevremov
