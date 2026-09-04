@@ -247,7 +247,11 @@ def update_user_role(user_id):
     user.role = new_role
     db.session.commit()
     
-    send_role_change_email(user.username,new_role)
+    try:
+        
+        send_role_change_email(user.username,new_role)
+    except Exception as e:
+        print(f"Email send failed : {e}")
 
     return jsonify({"message": f"User role updated to {new_role}"}), 200
     

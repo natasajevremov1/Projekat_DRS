@@ -42,13 +42,17 @@ function AdminUsers(){
     const updateRole=(id,role)=>{
         setLoading(true);
         api.put(`/admin/users/${id}`,{role},
-            {headers:{Authorization: `Bearer ${token}`}
+            {headers:{Authorization: `Bearer ${token}`,
+          "Content-Type":"application/json"}
         })
         .then(res=>{
             alert("Role updated successfully!");
             fetchUsers();
         })
-        .catch(err=> alert("Error updating role"))
+        .catch(err=> {
+          console.error("error:",err)
+          alert("Error updating role")})
+        
         .finally(()=>setLoading(false));
     };
 
