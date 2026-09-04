@@ -78,7 +78,7 @@ def send_role_change_email(to_email, new_role):
 
     try:
         # 3️⃣ Povezivanje sa Gmail SMTP serverom
-        server = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
+        server = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT,timeout=10)
         server.starttls()               # aktivira TLS enkripciju
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)  # prijava koristeći App Password
         server.send_message(msg)        # šalje mejl
