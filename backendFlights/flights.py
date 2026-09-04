@@ -39,7 +39,15 @@ mail = Mail()
 
 def create_app():
     flights=Flask(__name__)
-    CORS(flights,supports_credentials=True, resources={r"/*": {"origins": "*"}},  methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]) #dozvoljava reactu da pristupi backendu
+    CORS(flights,
+     supports_credentials=True, 
+     resources={r"/*": {"origins": [
+         "https://project-drs.vercel.app",
+         "https://project-drs-git-natasa-natasajevremov1.vercel.app",
+         "https://project-andgwmlan-natasajevremov1.vercel.app",
+         "http://localhost:5173"
+     ]}}, 
+     methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]) #dozvoljava reactu da pristupi backendu
 
     flights.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
     

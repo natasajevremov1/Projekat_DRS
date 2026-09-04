@@ -17,7 +17,15 @@ import time
 
 app=Flask(__name__)
 # Dozvoljava zahteve sa frontend-a
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+CORS(app, 
+     resources={r"/*": {"origins": [
+         "https://project-drs.vercel.app",
+         "https://project-drs-git-natasa-natasajevremov1.vercel.app",
+         "https://project-andgwmlan-natasajevremov1.vercel.app",
+         "http://localhost:5173"
+     ]}}, 
+     supports_credentials=True,
+     methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
