@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import Header from "./Header";
+import { flightsApi } from "../api";
 
 function AdminRatings() {
   const [ratings, setRatings] = useState([]);
@@ -15,8 +15,8 @@ function AdminRatings() {
     }
 
     setLoading(true);
-    axios
-      .get("http://127.0.0.1:5001/admin/ratings", {
+    flightsApi
+      .get("/admin/ratings", {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => setRatings(res.data))

@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import "../CSS/layout.css";  
 import "../CSS/global.css";  
 import "../CSS/admin.css";   
-import {api,flightsApi}  from "../api";
+import {api}  from "../api";
 
 function Header() {
   const [rejectedCount, setRejectedCount] = useState(0);
@@ -58,7 +58,7 @@ function Header() {
             <img
               src={
                 currentImage
-                  ? `http://127.0.0.1:5000/uploads/${currentImage.split("\\").pop()}`
+                  ? `${api.defaults.baseURL}/uploads/${currentImage.split("\\").pop()}`
                   : "/default-avatar.png"
               }
               alt="Profile"

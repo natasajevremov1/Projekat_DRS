@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Header from "./Header";
+import { flightsApi } from "../api";
 
 function MyFlights() {
   const [myFlights, setMyFlights] = useState([]);
@@ -17,7 +18,7 @@ function MyFlights() {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.get("http://127.0.0.1:5001/user/myflights", {
+      const res = await flightsApi.get("/user/myflights", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMyFlights(res.data);
@@ -36,8 +37,8 @@ function MyFlights() {
     if (!rating) return;
     setLoading(true);
     try {
-      await axios.post(
-        `http://127.0.0.1:5001/user/rate/${flightId}`,
+      await flightsApi.post(
+        `/user/rate/${flightId}`,
         { rating: parseInt(rating) },
         { headers: { Authorization: `Bearer ${token}` } }
       );

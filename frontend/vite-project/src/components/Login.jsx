@@ -46,7 +46,9 @@ function Login() {
 
     setErrorMessage("");
     setLoading(true);
-
+    console.log("LOGIN REQUEST");
+    console.log("API base URL:", api.defaults.baseURL);
+    console.log("Login URL:", `${api.defaults.baseURL}/login`);
     api
       .post("/login", { username, password })
       .then((res) => {

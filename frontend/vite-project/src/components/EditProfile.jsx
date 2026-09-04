@@ -165,7 +165,7 @@ function EditProfile() {
     {currentImage && typeof currentImage === "string" && (
       <div>
         <img
-          src={currentImage.startsWith("blob:") ? currentImage : `http://127.0.0.1:5000/uploads/${currentImage.split("\\").pop()}`}
+          src={currentImage.startsWith("blob:") ? currentImage : `${api.defaults.baseURL}/uploads/${currentImage.split("\\").pop()}`}
           alt="Profile"
           style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "50%", marginBottom: "10px" }}
         />
