@@ -56,6 +56,17 @@ This project is a web application that simulates a flight booking and management
   npm install
   npm start
 
+## Live Demo
+
+🔗 [https://project-drs.vercel.app](https://project-drs.vercel.app)
+
+Note: the backend services are hosted on Render's free tier, so the first request after a period of inactivity may take 30–60 seconds to wake up.
+
+Email notifications (role changes, flight cancellations) are sent via Resend on a free, unverified account, which only allows delivery to the developer's own email address. Emails won't be received by other test accounts.
+
+**Test accounts:**
+- Admin: `admin` / `tvoja_jaka_lozinka`
+- User: `natasajevremov1@gmail.com` / `123`
 # Purpose
  This project was developed to practice building a distributed system with real-time communication and modern web technologies.
  
