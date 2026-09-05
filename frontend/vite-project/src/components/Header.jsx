@@ -5,7 +5,8 @@ import { Link, useNavigate } from "react-router-dom";
 import "../CSS/layout.css";  
 import "../CSS/global.css";  
 import "../CSS/admin.css";   
-import {api}  from "../api";
+import {api,flightsApi}  from "../api";
+import io from "socket.io-client";
 
 function Header() {
   const [rejectedCount, setRejectedCount] = useState(0);
@@ -29,7 +30,7 @@ function Header() {
 
     // Ako je MANAGER, dohvatiti odbijene letove
     if (role === "MANAGER") {
-      api
+      flightsApi
         .get("/flights/rejected", {
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -37,6 +38,11 @@ function Header() {
           setRejectedCount(res.data.length);
         })
         .catch((err) => console.log("Error loading rejected flights", err));
+        const socket=io(flightsApi.defaults.baseURL,{transports:["polling","websocket"]});
+        socket.on("flights-rejected",()=>{
+          setRejectedCount(prev=>prev+1);
+        });
+        return ()=>socket.disconnect();
     }
   }, [role]);
   

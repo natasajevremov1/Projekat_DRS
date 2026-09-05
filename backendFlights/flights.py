@@ -20,7 +20,7 @@ from flask_jwt_extended import jwt_required,get_jwt_identity,get_jwt
 from flask_socketio import SocketIO
 from threading import Thread
 import time
-
+from models.userModel import Users
 import asyncio
 from models.purchaseModel import TicketPurchase
 
@@ -33,6 +33,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
 from io import BytesIO
+import resend
 
 load_dotenv()
 
@@ -80,7 +81,23 @@ def create_app():
     listener_thread.start()
 
     return flights
+resend.api_key = os.getenv("RESEND_API_KEY")
 
+def send_cancellation_email(to_email, flight_name):
+    subject = "Vaš let je otkazan"
+    body = f"Poštovani,\n\nVaš let '{flight_name}' je otkazan.\n\nIzvinjavamo se na neprijatnosti.\n\nPozdrav,\nAvioPlatform Tim"
+
+    try:
+        resend.Emails.send({
+            "from": "onboarding@resend.dev",
+            "to": to_email,
+            "subject": subject,
+            "text": body,
+        })
+        print(f"Email o otkazivanju poslat na {to_email}")
+    except Exception as e:
+        print("Greška prilikom slanja emaila:", e)
+        
 @flights_bp.route("/flights")
 def home():
     return "Backend flights is working"
@@ -232,7 +249,14 @@ def cancel_flight(flight_id):
     
     flight.status = "cancelled"
     db.session.commit()
-
+    
+    purchases=TicketPurchase.query.filter_by(flight_id=flight_id).all() #sve kupovine za taj let
+    for purchase in purchases:
+        user=Users.query.get(purchase.user_id)
+        if user:
+            send_cancellation_email(user.username,flight.flight_name)
+        
+        
     socketio.emit("flight-cancelled", {
         "id": flight.id,
         "flight_name": flight.flight_name,
