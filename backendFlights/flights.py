@@ -357,6 +357,12 @@ def purchase_ticket(flight_id):
     if existing:
         return jsonify({"message": "You already bought a ticket for this flight"}), 400
     
+    user=Users.query.get(uid)
+    if(user.accountBalance<flight.ticket_price):
+        return jsonify({"message":"You don't have enough money"}),400
+   
+    user.accountBalance -= flight.ticket_price
+
     purchase = TicketPurchase(user_id=uid, flight_id=flight.id)
     db.session.add(purchase)
     db.session.commit()
