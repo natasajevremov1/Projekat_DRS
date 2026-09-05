@@ -73,6 +73,12 @@ def create_app():
 
     flights.register_blueprint(flights_bp)
 
+    with flights.app_context():
+        db.create_all()
+
+    listener_thread = Thread(target=flight_watcher_thread, args=(flights,), daemon=True)
+    listener_thread.start()
+
     return flights
 
 @flights_bp.route("/flights")
@@ -801,17 +807,9 @@ def flight_watcher_thread(app):
         time.sleep(10)
 
     
-if __name__ == "__main__":
-
-    flights = create_app()
-
-    with flights.app_context():
-        db.create_all()
-
-    listener_thread = Thread(target=flight_watcher_thread, args=(flights,), daemon=True)
-    listener_thread.start()
-
-    socketio.run(flights, host="0.0.0.0", port=5001, debug=True, use_reloader=False)
     
+if __name__ == "__main__":
+    flights = create_app()
+    socketio.run(flights, host="0.0.0.0", port=5001, debug=True, use_reloader=False)    
        
 
