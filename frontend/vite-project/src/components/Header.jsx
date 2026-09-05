@@ -39,7 +39,7 @@ function Header() {
         })
         .catch((err) => console.log("Error loading rejected flights", err));
         const socket=io(flightsApi.defaults.baseURL,{transports:["polling","websocket"]});
-        socket.on("flights-rejected",()=>{
+        socket.on("flight-rejected",()=>{
           setRejectedCount(prev=>prev+1);
         });
         return ()=>socket.disconnect();
