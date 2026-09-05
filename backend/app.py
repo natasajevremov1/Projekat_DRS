@@ -15,6 +15,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import time
 import resend
+from sqlalchemy.exc import IntegrityError
+
 
 app=Flask(__name__)
 # Dozvoljava zahteve sa frontend-a
@@ -254,9 +256,15 @@ def delete_user(user_id):
     user=User.query.get(user_id)
     if not user:
         return jsonify({"message":"User not found"}),404
+    
     db.session.delete(user)
-    db.session.commit()
-    return jsonify({"message":f"User {user.username} succesfully deleted"}),200  
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"message": "Cannot delete user with existing bookings/purchases."}), 409
+
+    return jsonify({"message":f"User {user.username} succesfully deleted"}),200
 
 @app.route("/profile", methods=["PUT","GET"])
 @jwt_required()

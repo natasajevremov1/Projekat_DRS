@@ -73,7 +73,12 @@ function AdminUsers(){
     })
     .catch(err => {
         console.error(err); // vidi šta tačno vraća server
-        alert("Error deleting user!");
+
+      if (err.response?.status === 409) {
+            alert("Cannot delete user: they have purchased tickets or made bookings.");
+        } else {
+            alert("Error deleting user!");
+        }
     })
     .finally(() => setLoading(false));
 };
